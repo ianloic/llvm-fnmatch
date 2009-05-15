@@ -54,6 +54,7 @@ int main(int argc, char**argv) {
   
   size_t pattern_length = strlen(argv[1]);
   for (size_t i = 0; i < pattern_length; i++) {
+    char pattern_char = argv[1][i];
     // make a basicblock for this test
     test = BasicBlock::Create("test", func);
     // if needed, make the last cont block branch to this test block...
@@ -67,9 +68,32 @@ int main(int argc, char**argv) {
         ConstantInt::get(IntegerType::get(32), i), "", test);
     // load the value
     LoadInst* path_char = new LoadInst(path_char_ptr, "path_char", test);
+    if (pattern_char == '?') {
+      // match any character, so just check against \0
+      ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, ConstantInt::get(IntegerType::get(8), 0), "", test);
+      BranchInst::Create(return_false, cont, cmp_chr, test);
+      continue;
+/*    } else if (pattern_char == '[') {
+      // start of a bracket expression
+      i++;
+      bool matching = true;
+      if (argv[1][i] == '!') {
+        matching = false;
+        i++
+      }
+      // FIXME: if 1st char is ] then that doesn't terminate the bracket expression
+      // FIXME: support ranges...
+      while(argv[1][i] && argv[1][i] != ']') {
+        if (matching) {
+          ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, ConstantInt::get(IntegerType::get(8), pattern_char), "", test);
+        } else {
+        }
+      }
+      */
+    }
     // check the loaded value againt the supplied string
-    ICmpInst* is_nul = new ICmpInst(ICmpInst::ICMP_NE, path_char, ConstantInt::get(IntegerType::get(8), argv[1][i]), "", test);
-    BranchInst::Create(return_false, cont, is_nul, test);
+    ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, ConstantInt::get(IntegerType::get(8), pattern_char), "", test);
+    BranchInst::Create(return_false, cont, cmp_chr, test);
 
   }
 
