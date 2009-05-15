@@ -1,0 +1,3 @@
+Implementation of fnmatch on llvm. Totally useless, but a stepping stone towards implementing regular expressions.
+
+
