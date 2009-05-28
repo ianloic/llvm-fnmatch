@@ -17,13 +17,18 @@ ExistingModuleProvider* FnmatchCompiler::mp = NULL;
 FunctionPassManager* FnmatchCompiler::fpm = NULL;
 
 
-void
-FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
+FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
+    FnmatchRules::const_iterator& _rule_iter, 
+    const FnmatchRules::const_iterator& _rule_end, 
+    const std::string& name) 
+    : compiler(_compiler), rule_iter(_rule_iter), rule_end(_rule_end) {
+
   // create a function of type i1(char*)
   std::vector<const Type*> args_type;
   args_type.push_back(PointerType::get(IntegerType::get(8), 0));
   FunctionType *func_type = FunctionType::get(IntegerType::get(1), args_type, false);
-  func = Function::Create(func_type, Function::ExternalLinkage, name, module);
+  func = Function::Create(func_type, Function::ExternalLinkage, name, 
+      FnmatchCompiler::module);
 
   // get the path argument 
   Function::arg_iterator args = func->arg_begin();
@@ -47,28 +52,34 @@ FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
   return_true = BasicBlock::Create("return_true", func);
   ReturnInst::Create(ConstantInt::get(IntegerType::get(1), 1), return_true);
 
-  FnmatchParser parser;
-  std::vector<FnmatchRule*> rules = parser.Parse(pattern);
-
-  for (std::vector<FnmatchRule*>::const_iterator i = rules.begin();
-      i < rules.end(); i++) {
-    FnmatchRule* rule = *i;
+  while (rule_iter < rule_end) {
+    FnmatchRule* rule = *rule_iter;
     rule->Compile(this);
+    rule_iter++;
   }
 
- 
   // okay, everything matched, return true
   BranchInst::Create(return_true, previous);
-
-  // move return_false after return_true
-  //return_false->moveAfter(return_true);
 
   // check the function, eh?
   verifyFunction(*func);
 }
 
+
+void
+FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
+  // parse the fnmatch expression into rules
+  FnmatchParser parser;
+  FnmatchRules rules = parser.Parse(pattern);
+
+  FnmatchRules::const_iterator rule_iter = rules.begin();
+  FnmatchRules::const_iterator rule_end = rules.end();
+
+  function = new FnmatchFunction(this, rule_iter, rule_end, name);
+}
+
 Value* 
-FnmatchCompiler::loadPathCharacter(BasicBlock* basicBlock) {
+FnmatchFunction::loadPathCharacter(BasicBlock* basicBlock) {
   // load the index
   Value* index = new LoadInst(index_ptr, "index", basicBlock);
   // get a pointer to the path character
@@ -79,7 +90,7 @@ FnmatchCompiler::loadPathCharacter(BasicBlock* basicBlock) {
 }
 
 void
-FnmatchCompiler::consumePathCharacter(BasicBlock* basicBlock) {
+FnmatchFunction::consumePathCharacter(BasicBlock* basicBlock) {
   // load the index
   Value* index = new LoadInst(index_ptr, "index", basicBlock);
   // increment
@@ -89,7 +100,7 @@ FnmatchCompiler::consumePathCharacter(BasicBlock* basicBlock) {
 }
 
 BasicBlock* 
-FnmatchCompiler::firstBlock(const std::string& name) {
+FnmatchFunction::firstBlock(const std::string& name) {
   // create a block
   BasicBlock* block = BasicBlock::Create(name, func);
 
@@ -103,20 +114,20 @@ FnmatchCompiler::firstBlock(const std::string& name) {
 }
 
 void 
-FnmatchCompiler::lastBlock(BasicBlock* block) {
+FnmatchFunction::lastBlock(BasicBlock* block) {
   // save off this block...
   previous = block;
 }
 
 void
 FnmatchCompiler::optimize() {
-  fpm->run(*func);
+  fpm->run(*function->func);
 }
 
 bool
 FnmatchCompiler::run(const char* path) {
   // okay, let's run this thing
-  void* func_void_ptr = executionEngine->getPointerToFunction(func);
+  void* func_void_ptr = executionEngine->getPointerToFunction(function->func);
   bool (*func_ptr)(const char*) = (bool (*)(const char*))func_void_ptr;
   return (func_ptr)(path);
 }
@@ -125,7 +136,7 @@ FnmatchCompiler::run(const char* path) {
 
 
 void
-FnmatchCharacter::Compile(FnmatchCompiler* compiler) {
+FnmatchCharacter::Compile(FnmatchFunction* compiler) {
   // create a block for the test
   BasicBlock* test = compiler->firstBlock("test");
   // create a block to continue to on success
@@ -147,7 +158,7 @@ FnmatchCharacter::Compile(FnmatchCompiler* compiler) {
 
 
 void
-FnmatchSingle::Compile(FnmatchCompiler* compiler) {
+FnmatchSingle::Compile(FnmatchFunction* compiler) {
   // create a block for the test
   BasicBlock* test = compiler->firstBlock("test");
   // create a block to continue to on success
@@ -165,7 +176,7 @@ FnmatchSingle::Compile(FnmatchCompiler* compiler) {
 }
 
 void
-FnmatchBracket::Compile(FnmatchCompiler* compiler) {
+FnmatchBracket::Compile(FnmatchFunction* compiler) {
   // create a block for the test
   BasicBlock* test = compiler->firstBlock("test");
   // create a block to continue to on success
@@ -207,7 +218,11 @@ FnmatchBracket::Compile(FnmatchCompiler* compiler) {
 
 
 void
-FnmatchMultiple::Compile(FnmatchCompiler* compiler) {
+FnmatchMultiple::Compile(FnmatchFunction* function) {
+  /*
+  FnmatchFunction* sub_function = new FnmatchFunction(function->compiler,
+      function->rule_iter, function->rule_end, "sub");
+      */
   throw std::string("* not implemented");
 }
  

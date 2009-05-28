@@ -16,6 +16,37 @@
 
 using namespace llvm;
 
+class FnmatchCompiler;
+class FnmatchRule;
+
+typedef std::vector<FnmatchRule*> FnmatchRules;
+
+class FnmatchFunction {
+  public:
+    FnmatchFunction(FnmatchCompiler* compiler, 
+        FnmatchRules::const_iterator& rule_iter,
+        const FnmatchRules::const_iterator& rule_end, const std::string& name);
+    Function* func;
+
+    FnmatchCompiler* compiler;
+    std::vector<FnmatchRule*>::const_iterator rule_iter;
+    const std::vector<FnmatchRule*>::const_iterator rule_end;
+
+    Value* path_ptr; // Value for the path argument to the function
+    Value* index_ptr; // Value representing the local variable for the offset within the path
+    BasicBlock* previous; // the most recently created block
+
+    // blocks that we might want to branch to
+    BasicBlock* return_false;
+    BasicBlock* return_true;
+
+    // helpers
+    Value* loadPathCharacter(BasicBlock* basicBlock);
+    void consumePathCharacter(BasicBlock* basicBlock);
+    BasicBlock* firstBlock(const std::string& name);
+    void lastBlock(BasicBlock* block);
+};
+
 class FnmatchCompiler {
   public:
     static void Initialize() {
@@ -36,12 +67,6 @@ class FnmatchCompiler {
       fpm->add(createCFGSimplificationPass());
     }
 
-    Function* func;
-
-    FnmatchCompiler() {
-      previous = NULL;
-    }
-
     void dump(void) const {
       module->dump();
     }
@@ -52,43 +77,27 @@ class FnmatchCompiler {
 
     bool run(const char* path);
 
+    FnmatchFunction* function;
 
-    Value* path_ptr; // Value for the path argument to the function
-    Value* index_ptr; // Value representing the local variable for the offset within the path
-    BasicBlock* previous; // the most recently created block
 
-    // blocks that we might want to branch to
-    BasicBlock* return_false;
-    BasicBlock* return_true;
-
-    // helpers
-    Value* loadPathCharacter(BasicBlock* basicBlock);
-    void consumePathCharacter(BasicBlock* basicBlock);
-    BasicBlock* firstBlock(const std::string& name);
-    void lastBlock(BasicBlock* block);
-
+    static Module* module;
   private:
     static ExecutionEngine* executionEngine;
-    static Module* module;
     static ExistingModuleProvider* mp;
     static FunctionPassManager* fpm;
-
-    // complex expressions
-    void bracketExpression(const char*& pattern);
-    void wildcardExpression(const char*& pattern);
 };
 
 // represents part of an fnmatch rule
 class FnmatchRule {
   public:
-    virtual void Compile(FnmatchCompiler* compiler) = 0;
+    virtual void Compile(FnmatchFunction* compiler) = 0;
 };
 
 // represents the match of a single character
 class FnmatchCharacter : public FnmatchRule {
   public:
     FnmatchCharacter(char ch) : character(ch) { }
-    virtual void Compile(FnmatchCompiler* compiler);
+    virtual void Compile(FnmatchFunction* compiler);
   private:
     char character;
 };
@@ -97,7 +106,7 @@ class FnmatchCharacter : public FnmatchRule {
 class FnmatchSingle : public FnmatchRule {
   public:
     FnmatchSingle() { }
-    virtual void Compile(FnmatchCompiler* compiler);
+    virtual void Compile(FnmatchFunction* compiler);
 };
 
 // represents a bracket expression
@@ -105,7 +114,7 @@ class FnmatchBracket : public FnmatchRule {
   public:
     FnmatchBracket(bool _inverse, const std::string& _characters)
       : inverse(_inverse), characters(_characters) { }
-    virtual void Compile(FnmatchCompiler* compiler);
+    virtual void Compile(FnmatchFunction* compiler);
   private:
     bool inverse;
     const std::string characters;
@@ -115,7 +124,7 @@ class FnmatchBracket : public FnmatchRule {
 class FnmatchMultiple : public FnmatchRule {
   public:
     FnmatchMultiple() { }
-    virtual void Compile(FnmatchCompiler* compiler);
+    virtual void Compile(FnmatchFunction* compiler);
 };
 
 
