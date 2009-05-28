@@ -109,25 +109,6 @@ FnmatchCompiler::lastBlock(BasicBlock* block) {
 }
 
 void
-FnmatchCompiler::bracketExpression(const char*& pattern) {
-  // start of a bracket expression
-  pattern++;
-  bool matching = true;
-  if (*pattern == '!') {
-    matching = false;
-    pattern++;
-  }
-  // FIXME: if 1st char is ] then that doesn't terminate the bracket expression
-  // FIXME: support ranges...
-  while(*pattern && *pattern != ']') {
-    if (matching) {
-      //ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, ConstantInt::get(IntegerType::get(8), *pattern), "", test);
-    } else {
-    }
-  }
-}
-
-void
 FnmatchCompiler::optimize() {
   fpm->run(*func);
 }
@@ -152,6 +133,8 @@ FnmatchCharacter::Compile(FnmatchCompiler* compiler) {
 
   // load the path character
   Value* path_char = compiler->loadPathCharacter(test);
+  // consume the path character
+  compiler->consumePathCharacter(test);
   // compare the path character with the rule character
   ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, 
       ConstantInt::get(IntegerType::get(8), character), "", test);
@@ -172,10 +155,10 @@ FnmatchSingle::Compile(FnmatchCompiler* compiler) {
 
   // match any character, so just check against \0
   Value* path_char = compiler->loadPathCharacter(test);
+  compiler->consumePathCharacter(cont);
   ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, 
       ConstantInt::get(IntegerType::get(8), 0), "", test);
   BranchInst::Create(compiler->return_false, cont, cmp_chr, test);
-  compiler->consumePathCharacter(cont);
 
   // mark the cont block as the final one for this section
   compiler->lastBlock(cont);
@@ -190,6 +173,8 @@ FnmatchBracket::Compile(FnmatchCompiler* compiler) {
 
   // load the path character
   Value* path_char = compiler->loadPathCharacter(test);
+  // consume the path character
+  compiler->consumePathCharacter(test);
 
   BasicBlock* matched;
   BasicBlock* unmatched;
@@ -256,6 +241,7 @@ int main(int argc, char**argv) {
   test("1", "a");
   test(".", "a");
   test("foo", "foo");
-  */
   test("f?o", "foo");
+  */
+  test("f[aeiou]o", "foo");
 }

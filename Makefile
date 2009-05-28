@@ -11,4 +11,4 @@ test: test.o
 	$(CXX) -o test test.o $(LDFLAGS)
 
 clean:
-	rm -f fnmatch fnmatch.o test.o test
+	rm -f fnmatch fnmatch.o test.o test fnmatch_parse.o

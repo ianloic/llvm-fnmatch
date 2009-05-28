@@ -1,7 +1,7 @@
 // a parser for fnmatch rules
 
 
-#include "fnmatch_parse.h"
+#include "fnmatch.h"
 
 #include <string>
 #include <vector>
@@ -13,6 +13,7 @@ FnmatchParser::Parse(const std::string& rule) {
 
   // iterate through the string...
   for (std::string::const_iterator i = rule.begin(); i < rule.end(); i++) {
+    printf("parsing char %d\n", (i - rule.begin()));
     rules.push_back(ParseOne(i, rule.end()));
   }
 
@@ -54,6 +55,7 @@ FnmatchParser::ParseOne(std::string::const_iterator& i, const std::string::const
           } else {
             characters += *i;
           }
+          i++;
         }
         throw std::string("parse error - unterminated bracket expression");
       }
