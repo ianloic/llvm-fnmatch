@@ -2,15 +2,7 @@
 /* 8-bit chars only, because I'm lazy 
  * and I don't feel like learning c++ unicde today */
 
-#include "llvm/DerivedTypes.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/Module.h"
-#include "llvm/ModuleProvider.h"
-#include "llvm/PassManager.h"
-#include "llvm/Analysis/Verifier.h"
-#include "llvm/Target/TargetData.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Support/IRBuilder.h"
+#include "fnmatch.h"
 
 #include <string>
 
@@ -18,49 +10,20 @@
 
 using namespace llvm;
 
-static ExecutionEngine* executionEngine;
-static Module* module;
 
-class FnmatchCompiler {
-  public:
-    Function* func;
+Module* FnmatchCompiler::module = NULL;
+ExecutionEngine* FnmatchCompiler::executionEngine = NULL;
+ExistingModuleProvider* FnmatchCompiler::mp = NULL;
+FunctionPassManager* FnmatchCompiler::fpm = NULL;
 
-    FnmatchCompiler() {
-      previous = NULL;
-    }
-
-    void dump(void) const {
-      module->dump();
-    }
-
-    void compile(const char* pattern, const char* name="match");
-
-    void optimize();
-
-    bool run(const char* path);
-
-
-  private:
-    Value* path_ptr; // Value for the path argument to the function
-    Value* index_ptr; // Value representing the local variable for the offset within the path
-    BasicBlock* previous; // the most recently created block
-
-    // helpers
-    Value* loadPathCharacter(BasicBlock* basicBlock);
-    void consumePathCharacter(BasicBlock* basicBlock);
-
-    // complex expressions
-    void bracketExpression(const char*& pattern);
-    void wildcardExpression(const char*& pattern);
-};
 
 void
-FnmatchCompiler::compile(const char* pattern, const char* name) {
+FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
   // create a function of type i1(char*)
   std::vector<const Type*> args_type;
   args_type.push_back(PointerType::get(IntegerType::get(8), 0));
   FunctionType *func_type = FunctionType::get(IntegerType::get(1), args_type, false);
-  func = Function::Create(func_type, Function::ExternalLinkage, std::string(name), module);
+  func = Function::Create(func_type, Function::ExternalLinkage, name, module);
 
   // get the path argument 
   Function::arg_iterator args = func->arg_begin();
@@ -76,70 +39,29 @@ FnmatchCompiler::compile(const char* pattern, const char* name) {
   // we want to link the entry block into the next one we create...
   previous = entry;
 
-  // true and false
-  ConstantInt* true1 = ConstantInt::get(IntegerType::get(1), 1);
-  ConstantInt* false1 = ConstantInt::get(IntegerType::get(1), 0);
-
   // create a block that returns false
-  BasicBlock* return_false = BasicBlock::Create("return_false", func);
-  ReturnInst::Create(false1, return_false);
+  return_false = BasicBlock::Create("return_false", func);
+  ReturnInst::Create(ConstantInt::get(IntegerType::get(1), 0), return_false);
 
-  // the basic blocks we use:
-  BasicBlock* test = NULL; // where we load a character from the path and test it
-  BasicBlock* cont = NULL; // where we continue on to the next character
+  // create a block that returns true
+  return_true = BasicBlock::Create("return_true", func);
+  ReturnInst::Create(ConstantInt::get(IntegerType::get(1), 1), return_true);
+
+  FnmatchParser parser;
+  std::vector<FnmatchRule*> rules = parser.Parse(pattern);
+
+  for (std::vector<FnmatchRule*>::const_iterator i = rules.begin();
+      i < rules.end(); i++) {
+    FnmatchRule* rule = *i;
+    rule->Compile(this);
+  }
+
  
-  while(*pattern) {
-    //printf("compiling: '%c'\n", *pattern);
-    // make a basicblock for this test
-    test = BasicBlock::Create("test", func);
-    // if needed, make the last cont block branch to this test block...
-    if (previous) {
-      BranchInst::Create(test, previous);
-      previous = NULL;
-    }
-    // make a new cont block
-    cont = BasicBlock::Create("cont", func);
-    previous = cont;
-
-    if (*pattern == '?') {
-      // match any character, so just check against \0
-      Value* path_char = loadPathCharacter(test);
-      ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, ConstantInt::get(IntegerType::get(8), 0), "", test);
-      BranchInst::Create(return_false, cont, cmp_chr, test);
-      pattern++;
-      consumePathCharacter(cont);
-      continue;
-    } else if (*pattern == '[') {
-      bracketExpression(pattern);
-      continue;
-    } else if (*pattern == '*') {
-      wildcardExpression(pattern);
-      continue;
-    } else if (*pattern == '\\') {
-      // escape character, treat the next character literally
-      pattern++;
-    }
-    // check the loaded value againt the supplied string
-    Value* path_char = loadPathCharacter(test);
-    ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, ConstantInt::get(IntegerType::get(8), *pattern), "", test);
-    BranchInst::Create(return_false, cont, cmp_chr, test);
-
-    // move to the next character in the pattern
-    pattern++;
-    // move to the next character in the path
-    consumePathCharacter(cont);
-
-  }
-
   // okay, everything matched, return true
-  BasicBlock* return_true = BasicBlock::Create("return_true", func);
-  ReturnInst::Create(true1, return_true);
-  if (cont) {
-    BranchInst::Create(return_true, cont);
-  }
+  BranchInst::Create(return_true, previous);
 
   // move return_false after return_true
-  return_false->moveAfter(return_true);
+  //return_false->moveAfter(return_true);
 
   // check the function, eh?
   verifyFunction(*func);
@@ -166,6 +88,26 @@ FnmatchCompiler::consumePathCharacter(BasicBlock* basicBlock) {
   new StoreInst(index, index_ptr, basicBlock);
 }
 
+BasicBlock* 
+FnmatchCompiler::firstBlock(const std::string& name) {
+  // create a block
+  BasicBlock* block = BasicBlock::Create(name, func);
+
+  // if needed, make the last cont block branch to this block...
+  if (previous) {
+    BranchInst::Create(block, previous);
+    previous = NULL;
+  }
+
+  return block;
+}
+
+void 
+FnmatchCompiler::lastBlock(BasicBlock* block) {
+  // save off this block...
+  previous = block;
+}
+
 void
 FnmatchCompiler::bracketExpression(const char*& pattern) {
   // start of a bracket expression
@@ -186,27 +128,8 @@ FnmatchCompiler::bracketExpression(const char*& pattern) {
 }
 
 void
-FnmatchCompiler::wildcardExpression(const char*& pattern) {
-}
-
-void
 FnmatchCompiler::optimize() {
-  /// optimization
-  ExistingModuleProvider mp(module);
-  FunctionPassManager fpm(&mp);
-    
-  // Set up the optimizer pipeline.  Start with registering info about how the
-  // target lays out data structures.
-  fpm.add(new TargetData(*executionEngine->getTargetData()));
-  // Do simple "peephole" optimizations and bit-twiddling optzns.
-  fpm.add(createInstructionCombiningPass());
-  // Reassociate expressions.
-  fpm.add(createReassociatePass());
-  // Eliminate Common SubExpressions.
-  fpm.add(createGVNPass());
-  // Simplify the control flow graph (deleting unreachable blocks, etc).
-  fpm.add(createCFGSimplificationPass());
-  fpm.run(*func);
+  fpm->run(*func);
 }
 
 bool
@@ -217,19 +140,104 @@ FnmatchCompiler::run(const char* path) {
   return (func_ptr)(path);
 }
 
+
+
+
+void
+FnmatchCharacter::Compile(FnmatchCompiler* compiler) {
+  // create a block for the test
+  BasicBlock* test = compiler->firstBlock("test");
+  // create a block to continue to on success
+  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
+
+  // load the path character
+  Value* path_char = compiler->loadPathCharacter(test);
+  // compare the path character with the rule character
+  ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, 
+      ConstantInt::get(IntegerType::get(8), character), "", test);
+  // branch
+  BranchInst::Create(compiler->return_false, cont, cmp_chr, test);
+
+  // mark the cont block as the final one for this section
+  compiler->lastBlock(cont);
+}
+
+
+void
+FnmatchSingle::Compile(FnmatchCompiler* compiler) {
+  // create a block for the test
+  BasicBlock* test = compiler->firstBlock("test");
+  // create a block to continue to on success
+  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
+
+  // match any character, so just check against \0
+  Value* path_char = compiler->loadPathCharacter(test);
+  ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, 
+      ConstantInt::get(IntegerType::get(8), 0), "", test);
+  BranchInst::Create(compiler->return_false, cont, cmp_chr, test);
+  compiler->consumePathCharacter(cont);
+
+  // mark the cont block as the final one for this section
+  compiler->lastBlock(cont);
+}
+
+void
+FnmatchBracket::Compile(FnmatchCompiler* compiler) {
+  // create a block for the test
+  BasicBlock* test = compiler->firstBlock("test");
+  // create a block to continue to on success
+  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
+
+  // load the path character
+  Value* path_char = compiler->loadPathCharacter(test);
+
+  BasicBlock* matched;
+  BasicBlock* unmatched;
+
+  if (inverse) {
+    // any match -> return false
+    matched = compiler->return_false;
+    // no match -> continue
+    unmatched = cont;
+  } else {
+    // any match -> cont
+    matched = cont;
+    // no match -> return false
+    unmatched = compiler->return_false;
+  }
+
+  // switch on the path character
+  SwitchInst* sw = SwitchInst::Create(path_char, unmatched, 
+      characters.size(), test);
+  // for each character in the set...
+  for (std::string::const_iterator i = characters.begin();
+      i < characters.end(); i++) {
+    sw->addCase(ConstantInt::get(IntegerType::get(8), *i), matched);
+  }
+
+  // mark the cont block as the final one for this section
+  compiler->lastBlock(cont);
+}
+
+
+
+void
+FnmatchMultiple::Compile(FnmatchCompiler* compiler) {
+  throw std::string("* not implemented");
+}
+ 
 void
 test(const char* pattern, const char* path) {
   FnmatchCompiler* compiler = new FnmatchCompiler();
-  compiler->compile(pattern);
-/*
+  compiler->Compile(pattern);
   compiler->dump();
+
   printf("----------------------------\n");
   printf("optimizing\n");
   compiler->optimize();
   printf("optimized\n");
   compiler->dump();
-  printf("dumped\n");
-*/
+
   bool result = compiler->run(path);
   delete compiler;
   bool expected = (fnmatch(pattern, path, 0) == 0);
@@ -240,11 +248,14 @@ test(const char* pattern, const char* path) {
 
 int main(int argc, char**argv) {
   // important initialization - do this first
-  module = new Module("fnmatch");
-  executionEngine = ExecutionEngine::create(module);
+  FnmatchCompiler::Initialize();
 
-  test("a", "a");
+  /*
+  test("", "");
+  test("?", "a");
+  test("1", "a");
   test(".", "a");
   test("foo", "foo");
+  */
   test("f?o", "foo");
 }
