@@ -52,14 +52,28 @@ FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
   return_true = BasicBlock::Create("return_true", func);
   ReturnInst::Create(ConstantInt::get(IntegerType::get(1), 1), return_true);
 
+  BasicBlock* pre = NULL;
+  BasicBlock* post = entry;
+
   while (rule_iter < rule_end) {
+    // create a block to begin this rule
+    pre = BasicBlock::Create("pre", func);
+    // wire the last rule to this rule
+    if (post) {
+      BranchInst::Create(pre, post);
+    }
+    // create a block to end the rule
+    post = BasicBlock::Create("post", func);
+    // get the rule
     FnmatchRule* rule = *rule_iter;
-    rule->Compile(this);
+    // compile the rule
+    rule->Compile(this, pre, post);
+    // next rule...
     rule_iter++;
   }
 
   // okay, everything matched, return true
-  BranchInst::Create(return_true, previous);
+  BranchInst::Create(return_true, post);
 
   // check the function, eh?
   verifyFunction(*func);
@@ -99,26 +113,6 @@ FnmatchFunction::consumePathCharacter(BasicBlock* basicBlock) {
   new StoreInst(index, index_ptr, basicBlock);
 }
 
-BasicBlock* 
-FnmatchFunction::firstBlock(const std::string& name) {
-  // create a block
-  BasicBlock* block = BasicBlock::Create(name, func);
-
-  // if needed, make the last cont block branch to this block...
-  if (previous) {
-    BranchInst::Create(block, previous);
-    previous = NULL;
-  }
-
-  return block;
-}
-
-void 
-FnmatchFunction::lastBlock(BasicBlock* block) {
-  // save off this block...
-  previous = block;
-}
-
 void
 FnmatchCompiler::optimize() {
   fpm->run(*function->func);
@@ -136,56 +130,35 @@ FnmatchCompiler::run(const char* path) {
 
 
 void
-FnmatchCharacter::Compile(FnmatchFunction* compiler) {
-  // create a block for the test
-  BasicBlock* test = compiler->firstBlock("test");
-  // create a block to continue to on success
-  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
-
+FnmatchCharacter::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) {
   // load the path character
-  Value* path_char = compiler->loadPathCharacter(test);
+  Value* path_char = compiler->loadPathCharacter(pre);
   // consume the path character
-  compiler->consumePathCharacter(test);
+  compiler->consumePathCharacter(pre);
   // compare the path character with the rule character
   ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_NE, path_char, 
-      ConstantInt::get(IntegerType::get(8), character), "", test);
+      ConstantInt::get(IntegerType::get(8), character), "", pre);
   // branch
-  BranchInst::Create(compiler->return_false, cont, cmp_chr, test);
-
-  // mark the cont block as the final one for this section
-  compiler->lastBlock(cont);
+  BranchInst::Create(compiler->return_false, post, cmp_chr, pre);
 }
 
 
 void
-FnmatchSingle::Compile(FnmatchFunction* compiler) {
-  // create a block for the test
-  BasicBlock* test = compiler->firstBlock("test");
-  // create a block to continue to on success
-  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
-
+FnmatchSingle::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) {
   // match any character, so just check against \0
-  Value* path_char = compiler->loadPathCharacter(test);
-  compiler->consumePathCharacter(cont);
+  Value* path_char = compiler->loadPathCharacter(pre);
+  compiler->consumePathCharacter(post);
   ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, 
-      ConstantInt::get(IntegerType::get(8), 0), "", test);
-  BranchInst::Create(compiler->return_false, cont, cmp_chr, test);
-
-  // mark the cont block as the final one for this section
-  compiler->lastBlock(cont);
+      ConstantInt::get(IntegerType::get(8), 0), "", pre);
+  BranchInst::Create(compiler->return_false, post, cmp_chr, pre);
 }
 
 void
-FnmatchBracket::Compile(FnmatchFunction* compiler) {
-  // create a block for the test
-  BasicBlock* test = compiler->firstBlock("test");
-  // create a block to continue to on success
-  BasicBlock* cont = BasicBlock::Create("cont", compiler->func);
-
+FnmatchBracket::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) {
   // load the path character
-  Value* path_char = compiler->loadPathCharacter(test);
+  Value* path_char = compiler->loadPathCharacter(pre);
   // consume the path character
-  compiler->consumePathCharacter(test);
+  compiler->consumePathCharacter(pre);
 
   BasicBlock* matched;
   BasicBlock* unmatched;
@@ -194,31 +167,28 @@ FnmatchBracket::Compile(FnmatchFunction* compiler) {
     // any match -> return false
     matched = compiler->return_false;
     // no match -> continue
-    unmatched = cont;
+    unmatched = post;
   } else {
-    // any match -> cont
-    matched = cont;
+    // any match -> continue
+    matched = post;
     // no match -> return false
     unmatched = compiler->return_false;
   }
 
   // switch on the path character
   SwitchInst* sw = SwitchInst::Create(path_char, unmatched, 
-      characters.size(), test);
+      characters.size(), pre);
   // for each character in the set...
   for (std::string::const_iterator i = characters.begin();
       i < characters.end(); i++) {
     sw->addCase(ConstantInt::get(IntegerType::get(8), *i), matched);
   }
-
-  // mark the cont block as the final one for this section
-  compiler->lastBlock(cont);
 }
 
 
 
 void
-FnmatchMultiple::Compile(FnmatchFunction* function) {
+FnmatchMultiple::Compile(FnmatchFunction* function, BasicBlock* pre, BasicBlock* post) {
   /*
   FnmatchFunction* sub_function = new FnmatchFunction(function->compiler,
       function->rule_iter, function->rule_end, "sub");

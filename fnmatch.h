@@ -90,14 +90,14 @@ class FnmatchCompiler {
 // represents part of an fnmatch rule
 class FnmatchRule {
   public:
-    virtual void Compile(FnmatchFunction* compiler) = 0;
+    virtual void Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) = 0;
 };
 
 // represents the match of a single character
 class FnmatchCharacter : public FnmatchRule {
   public:
     FnmatchCharacter(char ch) : character(ch) { }
-    virtual void Compile(FnmatchFunction* compiler);
+    virtual void Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post);
   private:
     char character;
 };
@@ -106,7 +106,7 @@ class FnmatchCharacter : public FnmatchRule {
 class FnmatchSingle : public FnmatchRule {
   public:
     FnmatchSingle() { }
-    virtual void Compile(FnmatchFunction* compiler);
+    virtual void Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post);
 };
 
 // represents a bracket expression
@@ -114,7 +114,7 @@ class FnmatchBracket : public FnmatchRule {
   public:
     FnmatchBracket(bool _inverse, const std::string& _characters)
       : inverse(_inverse), characters(_characters) { }
-    virtual void Compile(FnmatchFunction* compiler);
+    virtual void Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post);
   private:
     bool inverse;
     const std::string characters;
@@ -124,7 +124,7 @@ class FnmatchBracket : public FnmatchRule {
 class FnmatchMultiple : public FnmatchRule {
   public:
     FnmatchMultiple() { }
-    virtual void Compile(FnmatchFunction* compiler);
+    virtual void Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post);
 };
 
 
