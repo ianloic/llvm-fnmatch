@@ -1,4 +1,3 @@
 .*.swp
-test
 *.o
-fnmatch
+fnmatch-test
