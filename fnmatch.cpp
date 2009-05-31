@@ -92,15 +92,18 @@ FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
   function = new FnmatchFunction(this, rule_iter, rule_end, name);
 }
 
-Value* 
-FnmatchFunction::loadPathCharacter(BasicBlock* basicBlock) {
+Value*
+FnmatchFunction::pathCharacterPtr(BasicBlock* basicBlock) {
   // load the index
   Value* index = new LoadInst(index_ptr, "index", basicBlock);
   // get a pointer to the path character
-  GetElementPtrInst* path_char_ptr = GetElementPtrInst::Create(path_ptr, index, "", basicBlock);
+  return GetElementPtrInst::Create(path_ptr, index, "", basicBlock);
+}
+
+Value* 
+FnmatchFunction::loadPathCharacter(BasicBlock* basicBlock) {
   // load the value
-  LoadInst* path_char = new LoadInst(path_char_ptr, "path_char", basicBlock);
-  return path_char;
+  return new LoadInst(pathCharacterPtr(basicBlock), "path_char", basicBlock);
 }
 
 void
@@ -131,6 +134,7 @@ FnmatchCompiler::run(const char* path) {
 
 void
 FnmatchCharacter::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) {
+  printf("compiling =='%c'\n", character);
   // load the path character
   Value* path_char = compiler->loadPathCharacter(pre);
   // consume the path character
@@ -188,12 +192,40 @@ FnmatchBracket::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* 
 
 
 void
-FnmatchMultiple::Compile(FnmatchFunction* function, BasicBlock* pre, BasicBlock* post) {
-  /*
+FnmatchMultiple::Compile(FnmatchFunction* function, 
+    BasicBlock* pre, BasicBlock* post) {
+  // consume this rule...
+  function->rule_iter++;
+
+  // the rest of the rule forms a sub-function that is called repeatedly
   FnmatchFunction* sub_function = new FnmatchFunction(function->compiler,
       function->rule_iter, function->rule_end, "sub");
-      */
-  throw std::string("* not implemented");
+
+  // the compiled sub-function will consume all of the rules
+  function->rule_iter = function->rule_end;
+
+  // create a loop block that will repeatedly call the sub-function
+  BasicBlock* loop = pre;//BasicBlock::Create("loop", function->func);
+  // create an increment block to move along the path
+  BasicBlock* increment = BasicBlock::Create("increment", function->func);
+
+  // get the address of the current position in the path
+  Value* current_path_ptr = function->pathCharacterPtr(loop);
+  // make that the argument
+  std::vector<Value*> args;
+  args.push_back(current_path_ptr);
+
+  // call the function and get the result
+  Value* result = CallInst::Create(sub_function->func, args.begin(), args.end(),
+      "call_sub_result", loop);
+  // Note, result is an i1
+  // if true, then return_true, else, go to the "increment" block
+  BranchInst::Create(function->return_true, increment, result, loop);
+
+  // the increment block just consumes a path char and then runs the loop
+  function->consumePathCharacter(increment);
+  BranchInst::Create(loop, increment);
+
 }
  
 void
@@ -227,6 +259,7 @@ int main(int argc, char**argv) {
   test(".", "a");
   test("foo", "foo");
   test("f?o", "foo");
-  */
   test("f[aeiou]o", "foo");
+  */
+  test("*.txt", "hello");
 }

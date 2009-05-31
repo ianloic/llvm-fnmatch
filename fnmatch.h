@@ -41,6 +41,7 @@ class FnmatchFunction {
     BasicBlock* return_true;
 
     // helpers
+    Value* pathCharacterPtr(BasicBlock* basicBlock);
     Value* loadPathCharacter(BasicBlock* basicBlock);
     void consumePathCharacter(BasicBlock* basicBlock);
     BasicBlock* firstBlock(const std::string& name);
