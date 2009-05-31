@@ -17,6 +17,38 @@ ExistingModuleProvider* FnmatchCompiler::mp = NULL;
 FunctionPassManager* FnmatchCompiler::fpm = NULL;
 
 
+#if 0
+static Function* _llvm_puts = NULL;
+
+// generate a call to puts
+static Value* llvm_puts(const char* s, BasicBlock* block) {
+  // create a function for "int puts(const char* s)" if needed
+  if (_llvm_puts == NULL) {
+    std::vector<const Type*> argsT(1, PointerType::get(IntegerType::get(8), 0));
+    FunctionType *puts_type = 
+      FunctionType::get(IntegerType::get(32), argsT, false);
+    _llvm_puts = Function::Create(puts_type, Function::ExternalLinkage, 
+        "puts", FnmatchCompiler::module);
+  }
+  // create a global constant array for the string
+  Constant* string = ConstantArray::get(std::string(s));
+  Value* string_global = new GlobalVariable(string->getType(), true,
+      GlobalValue::InternalLinkage, string, "tmp_puts_str", 
+      FnmatchCompiler::module);
+  // get a pointer to the first character
+  std::vector<Value*> indexes(2, ConstantInt::get(IntegerType::get(32), 0));
+  Value* string_ptr = GetElementPtrInst::Create(string_global, indexes.begin(),
+      indexes.end(), "", block);
+  // create an args vector
+  std::vector<Value*> args(1, string_ptr);
+  // call the function
+  return CallInst::Create(_llvm_puts, args.begin(), args.end(), "puts_return",
+      block);
+  return string_ptr;
+}
+#endif
+
+
 FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
     FnmatchRules::const_iterator& _rule_iter, 
     const FnmatchRules::const_iterator& _rule_end, 
@@ -43,6 +75,9 @@ FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
   new StoreInst(ConstantInt::get(IntegerType::get(32), 0), index_ptr, entry);
   // we want to link the entry block into the next one we create...
   previous = entry;
+
+  // puts some shit
+  //llvm_puts("function starts", entry);
 
   // create a block that returns false
   return_false = BasicBlock::Create("return_false", func);
@@ -214,6 +249,8 @@ FnmatchMultiple::Compile(FnmatchFunction* function,
   // make that the argument
   std::vector<Value*> args;
   args.push_back(current_path_ptr);
+
+  //llvm_puts("calling sub-function", loop);
 
   // call the function and get the result
   Value* result = CallInst::Create(sub_function->func, args.begin(), args.end(),
