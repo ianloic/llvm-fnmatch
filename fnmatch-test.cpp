@@ -26,18 +26,23 @@ test(const char* pattern, const char* path) {
   //compiler->reset();
 }
 
+static const char* test_patterns[] = {
+  "", "?", "*", "1", ".", "foo", "f?o", "f[aeiou]o", "*.txt", "*.*",
+  NULL
+};
+
+static const char* test_paths[] = {
+  "", "a", "foo", "hello", "hello.txt", "hello.txto",
+  NULL
+};
+
 int main(int argc, char**argv) {
   // important initialization - do this first
   FnmatchCompiler::Initialize();
 
-  test("", "");
-  test("", "a");
-  test("?", "a");
-  test("1", "a");
-  test(".", "a");
-  test("foo", "foo");
-  test("f?o", "foo");
-  test("f[aeiou]o", "foo");
-  test("*.txt", "hello");
-  test("*.txt", "hello.txto");
+  for (const char** pattern = test_patterns; *pattern; pattern++) {
+    for (const char** path = test_paths; *path; path++) {
+      test(*pattern, *path);
+    }
+  }
 }
