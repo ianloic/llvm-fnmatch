@@ -174,7 +174,6 @@ FnmatchCompiler::run(const char* path) {
 
 void
 FnmatchCharacter::Compile(FnmatchFunction* compiler, BasicBlock* pre, BasicBlock* post) {
-  printf("compiling =='%c'\n", character);
   // load the path character
   Value* path_char = compiler->loadPathCharacter(pre);
   // consume the path character
@@ -266,21 +265,21 @@ FnmatchMultiple::Compile(FnmatchFunction* function,
 
   // the increment block just consumes a path char and then runs the loop
   function->consumePathCharacter(increment);
-  BranchInst::Create(loop, increment);
-
+  // check for the end of the string...
+  Value* path_char = function->loadPathCharacter(increment);
+  ICmpInst* cmp_chr = new ICmpInst(ICmpInst::ICMP_EQ, path_char, 
+      ConstantInt::get(IntegerType::get(8), 0), "", increment);
+  // if char == \0 then return_false else loop
+  BranchInst::Create(function->return_false, loop, cmp_chr, increment);
 }
  
 void
 test(const char* pattern, const char* path) {
   FnmatchCompiler* compiler = new FnmatchCompiler();
   compiler->Compile(pattern);
-  compiler->dump();
-
-  printf("----------------------------\n");
-  printf("optimizing\n");
-  compiler->optimize();
-  printf("optimized\n");
-  compiler->dump();
+  //compiler->dump();
+  //compiler->optimize();
+  //compiler->dump();
 
   bool result = compiler->run(path);
   delete compiler;
@@ -288,20 +287,28 @@ test(const char* pattern, const char* path) {
   printf("[%c] fnmatch(\"%s\", \"%s\") = %s, expected %s\n", 
       (expected == result)?'+':'-', pattern, path, result?"true":"false", 
       expected?"true":"false");
+  if (expected != result) {
+    // our algorithm didn't match system fnmatch, dump & fail
+    compiler->dump();
+    exit(1);
+  }
+
+  // done testing, throw the function away
+  //compiler->reset();
 }
 
 int main(int argc, char**argv) {
   // important initialization - do this first
   FnmatchCompiler::Initialize();
 
-  /*
   test("", "");
+  test("", "a");
   test("?", "a");
   test("1", "a");
   test(".", "a");
   test("foo", "foo");
   test("f?o", "foo");
   test("f[aeiou]o", "foo");
-  */
   test("*.txt", "hello");
+  test("*.txt", "hello.txto");
 }

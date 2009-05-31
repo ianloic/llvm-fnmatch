@@ -13,7 +13,6 @@ FnmatchParser::Parse(const std::string& rule) {
 
   // iterate through the string...
   for (std::string::const_iterator i = rule.begin(); i < rule.end(); i++) {
-    printf("parsing char %d\n", (i - rule.begin()));
     rules.push_back(ParseOne(i, rule.end()));
   }
 
