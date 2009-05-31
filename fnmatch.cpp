@@ -107,8 +107,13 @@ FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
     rule_iter++;
   }
 
-  // okay, everything matched, return true
-  BranchInst::Create(return_true, post);
+  // make sure that we've reached the end of the path, now that we've
+  // reached the end of the rules
+  Value* path_char = loadPathCharacter(post);
+  ICmpInst* path_consumed = new ICmpInst(ICmpInst::ICMP_EQ, path_char, 
+      ConstantInt::get(IntegerType::get(8), 0), "path_consumed", post);
+  // if the path was consumed return true, else return false
+  BranchInst::Create(return_true, return_false, path_consumed, post);
 
   // check the function, eh?
   verifyFunction(*func);
