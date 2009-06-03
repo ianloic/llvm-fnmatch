@@ -13,6 +13,7 @@ Module* FnmatchCompiler::module = NULL;
 ExecutionEngine* FnmatchCompiler::executionEngine = NULL;
 ExistingModuleProvider* FnmatchCompiler::mp = NULL;
 FunctionPassManager* FnmatchCompiler::fpm = NULL;
+PassManager* FnmatchCompiler::pm = NULL;
 
 
 #if 0
@@ -157,6 +158,7 @@ FnmatchFunction::consumePathCharacter(BasicBlock* basicBlock) {
 void
 FnmatchCompiler::optimize() {
   fpm->run(*function->func);
+  pm->run(*module);
 }
 
 bool
