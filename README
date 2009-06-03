@@ -1,3 +1,12 @@
-Implementation of fnmatch on llvm. Totally useless, but a stepping stone towards implementing regular expressions.
+Implementation of a subset of fnmatch on llvm. 
+This is just an exercise in implementing a pattern matching language JIT
+on LLVM, perhaps a stepping stone towards implementing a full regular
+expression engine.
 
-
+This code operates on 8-bit octets rather than unicode characters. It only
+understands the following expressions:
+ - '?' matches any single character
+ - '*' matches any zero or more characters
+ - '[xyz]' matches any of 'x', 'y', or 'z' (ranges are not supported)
+ - '\x' matches the character 'x' literally (ie: escaping)
+ - any other character matches literally
