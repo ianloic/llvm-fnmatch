@@ -4,11 +4,11 @@ LD = $(CXX)
 
 all: fnmatch-test fnmatch-benchmark
 	
-fnmatch-test: fnmatch-test.o fnmatch.o fnmatch-parse.o
-	$(CXX) -o fnmatch-test fnmatch-test.o fnmatch.o fnmatch-parse.o $(LDFLAGS)
+fnmatch-test: fnmatch-test.o fnmatch-compiler.o fnmatch-parse.o
+	$(CXX) -o fnmatch-test fnmatch-test.o fnmatch-compiler.o fnmatch-parse.o $(LDFLAGS)
 
-fnmatch-benchmark: fnmatch-benchmark.o fnmatch.o fnmatch-parse.o
-	$(CXX) -o fnmatch-benchmark fnmatch-benchmark.o fnmatch.o fnmatch-parse.o $(LDFLAGS)
+fnmatch-benchmark: fnmatch-benchmark.o fnmatch-compiler.o fnmatch-parse.o
+	$(CXX) -o fnmatch-benchmark fnmatch-benchmark.o fnmatch-compiler.o fnmatch-parse.o $(LDFLAGS)
 
 clean:
-	rm -f fnmatch-test fnmatch-benchmark fnmatch-test.o fnmatch-benchmark.o fnmatch.o fnmatch-parse.o
+	rm -f fnmatch-test fnmatch-benchmark fnmatch-test.o fnmatch-benchmark.o fnmatch-compiler.o fnmatch-parse.o
