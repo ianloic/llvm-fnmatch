@@ -1,3 +1,4 @@
 .*.swp
 *.o
 fnmatch-test
+fnmatch-benchmark
