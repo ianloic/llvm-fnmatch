@@ -3,7 +3,7 @@
 #include <fnmatch.h>
 #include <sys/time.h>
 
-#define PATTERN "*.txt"
+#define PATTERN "*.*"
 #define PATH "hello.txt"
 #define RUNS 1000000
 
@@ -18,16 +18,6 @@ class Timer {
   private:
     struct timeval _start;
     struct timeval _stop;
-};
-
-static const char* test_patterns[] = {
-  "", "?", "*", "1", ".", "foo", "f?o", "f[aeiou]o", "*.txt", "*.*",
-  NULL
-};
-
-static const char* test_paths[] = {
-  "", "a", "foo", "hello", "hello.txt", "hello.txto",
-  NULL
 };
 
 int main(int argc, char**argv) {
@@ -61,5 +51,6 @@ int main(int argc, char**argv) {
   printf ("llvm runs took %lf seconds\n", llvm_impl.seconds());
   printf ("libc runs took %lf seconds\n", libc_impl.seconds());
 
+  //compiler->dump();
 }
 
