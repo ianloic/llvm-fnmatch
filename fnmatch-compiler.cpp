@@ -381,6 +381,13 @@ FnmatchMultiple::Compile(FnmatchFunction* function,
   // consume this rule...
   function->rule_iter++;
 
+  if (function->rule_iter >= function->rule_end) {
+    // no more rules after the *, nothing to look for
+    // ie: if we get to this point we win!
+    BranchInst::Create(function->return_true, pre);
+    return;
+  }
+
   // the rest of the rule forms a sub-function that is called repeatedly
   FnmatchFunction* sub_function = new FnmatchFunction(function->compiler,
       function->rule_iter, function->rule_end, "sub");
