@@ -37,6 +37,11 @@ static const char* test_paths[] = {
 };
 
 int main(int argc, char**argv) {
+  if (argc == 3) {
+    // test specific pattern and path
+    test(argv[1], argv[2]);
+    exit(0);
+  }
   for (const char** pattern = test_patterns; *pattern; pattern++) {
     for (const char** path = test_paths; *path; path++) {
       test(*pattern, *path);
