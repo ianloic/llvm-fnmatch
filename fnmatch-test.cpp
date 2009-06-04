@@ -37,9 +37,6 @@ static const char* test_paths[] = {
 };
 
 int main(int argc, char**argv) {
-  // important initialization - do this first
-  FnmatchCompiler::Initialize();
-
   for (const char** pattern = test_patterns; *pattern; pattern++) {
     for (const char** path = test_paths; *path; path++) {
       test(*pattern, *path);

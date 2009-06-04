@@ -14,6 +14,7 @@ ExecutionEngine* FnmatchCompiler::executionEngine = NULL;
 ExistingModuleProvider* FnmatchCompiler::mp = NULL;
 FunctionPassManager* FnmatchCompiler::fpm = NULL;
 PassManager* FnmatchCompiler::pm = NULL;
+bool FnmatchCompiler::mInitialized = false;
 
 
 #if 0
@@ -47,6 +48,148 @@ static Value* llvm_puts(const char* s, BasicBlock* block) {
 }
 #endif
 
+
+void
+FnmatchCompiler::Initialize() {
+  module = new Module("fnmatch");
+  executionEngine = ExecutionEngine::create(module);
+
+  // set up the whole module pipeline
+  pm = new PassManager();
+  pm->add(new TargetData(module));
+
+  // Set up the function optimizer pipeline.  
+  mp = new ExistingModuleProvider(module);
+  fpm = new FunctionPassManager(mp);
+  // Start with registering info about how the
+  // target lays out data structures.
+  fpm->add(new TargetData(module));
+  // Do simple "peephole" optimizations and bit-twiddling optzns.
+  fpm->add(createInstructionCombiningPass());
+  // Reassociate expressions.
+  fpm->add(createReassociatePass());
+  // Eliminate Common SubExpressions.
+  fpm->add(createGVNPass());
+  // Simplify the control flow graph (deleting unreachable blocks, etc).
+  fpm->add(createCFGSimplificationPass());
+
+
+  pm->add(createVerifierPass());                  // Verify that input is correct
+
+  //pm->add(createLowerSetJmpPass());          // Lower llvm.setjmp/.longjmp
+
+  //pm->add(createRaiseAllocationsPass());     // call %malloc -> malloc inst
+  pm->add(createCFGSimplificationPass());    // Clean up disgusting code
+  pm->add(createPromoteMemoryToRegisterPass());// Kill useless allocas
+  //pm->add(createGlobalOptimizerPass());      // Optimize out global vars
+  //pm->add(createGlobalDCEPass());            // Remove unused fns and globs
+  //pm->add(createIPConstantPropagationPass());// IP Constant Propagation
+  //pm->add(createDeadArgEliminationPass());   // Dead argument elimination
+  pm->add(createInstructionCombiningPass()); // Clean up after IPCP & DAE
+  pm->add(createCFGSimplificationPass());    // Clean up after IPCP & DAE
+
+  //pm->add(createPruneEHPass());              // Remove dead EH info
+  //pm->add(createFunctionAttrsPass());        // Deduce function attrs
+
+  //pm->add(createFunctionInliningPass());   // Inline small functions
+  //pm->add(createArgumentPromotionPass());    // Scalarize uninlined fn args
+
+  pm->add(createSimplifyLibCallsPass());     // Library Call Optimizations
+  pm->add(createInstructionCombiningPass()); // Cleanup for scalarrepl.
+  pm->add(createJumpThreadingPass());        // Thread jumps.
+  pm->add(createCFGSimplificationPass());    // Merge & remove BBs
+  pm->add(createScalarReplAggregatesPass()); // Break up aggregate allocas
+  pm->add(createInstructionCombiningPass()); // Combine silly seq's
+  pm->add(createCondPropagationPass());      // Propagate conditionals
+
+  pm->add(createTailCallEliminationPass());  // Eliminate tail calls
+  pm->add(createCFGSimplificationPass());    // Merge & remove BBs
+  pm->add(createReassociatePass());          // Reassociate expressions
+  pm->add(createLoopRotatePass());
+  pm->add(createLICMPass());                 // Hoist loop invariants
+  pm->add(createLoopUnswitchPass());         // Unswitch loops.
+  pm->add(createLoopIndexSplitPass());       // Index split loops.
+  // FIXME : Removing instcombine causes nestedloop regression.
+  pm->add(createInstructionCombiningPass());
+  pm->add(createIndVarSimplifyPass());       // Canonicalize indvars
+  pm->add(createLoopDeletionPass());         // Delete dead loops
+  pm->add(createLoopUnrollPass());           // Unroll small loops
+  pm->add(createInstructionCombiningPass()); // Clean up after the unroller
+  pm->add(createGVNPass());                  // Remove redundancies
+  pm->add(createMemCpyOptPass());            // Remove memcpy / form memset
+  pm->add(createSCCPPass());                 // Constant prop with SCCP
+
+  // Run instcombine after redundancy elimination to exploit opportunities
+  // opened up by them.
+  pm->add(createInstructionCombiningPass());
+  pm->add(createCondPropagationPass());      // Propagate conditionals
+
+  pm->add(createDeadStoreEliminationPass()); // Delete dead stores
+  pm->add(createAggressiveDCEPass());        // Delete dead instructions
+  pm->add(createCFGSimplificationPass());    // Merge & remove BBs
+  //pm->add(createStripDeadPrototypesPass());  // Get rid of dead prototypes
+  //pm->add(createDeadTypeEliminationPass());  // Eliminate dead types
+  //pm->add(createConstantMergePass());        // Merge dup global constants
+
+
+
+  fpm->add(createCFGSimplificationPass());
+  fpm->add(createScalarReplAggregatesPass());
+  fpm->add(createInstructionCombiningPass());
+
+  //pm->add(createRaiseAllocationsPass());      // call %malloc -> malloc inst
+  pm->add(createCFGSimplificationPass());       // Clean up disgusting code
+  pm->add(createPromoteMemoryToRegisterPass()); // Kill useless allocas
+  //pm->add(createGlobalOptimizerPass());       // OptLevel out global vars
+  //pm->add(createGlobalDCEPass());             // Remove unused fns and globs
+  //pm->add(createIPConstantPropagationPass()); // IP Constant Propagation
+  //pm->add(createDeadArgEliminationPass());    // Dead argument elimination
+  pm->add(createInstructionCombiningPass());    // Clean up after IPCP & DAE
+  pm->add(createCFGSimplificationPass());       // Clean up after IPCP & DAE
+  //pm->add(createPruneEHPass());               // Remove dead EH info
+  //pm->add(createFunctionAttrsPass());         // Deduce function attrs
+  //pm->add(createFunctionInliningPass());      // Inline small functions
+  //pm->add(createArgumentPromotionPass());   // Scalarize uninlined fn args
+  pm->add(createSimplifyLibCallsPass());    // Library Call Optimizations
+  pm->add(createInstructionCombiningPass());  // Cleanup for scalarrepl.
+  pm->add(createJumpThreadingPass());         // Thread jumps.
+  pm->add(createCFGSimplificationPass());     // Merge & remove BBs
+  pm->add(createScalarReplAggregatesPass());  // Break up aggregate allocas
+  pm->add(createInstructionCombiningPass());  // Combine silly seq's
+  pm->add(createCondPropagationPass());       // Propagate conditionals
+  pm->add(createTailCallEliminationPass());   // Eliminate tail calls
+  pm->add(createCFGSimplificationPass());     // Merge & remove BBs
+  pm->add(createReassociatePass());           // Reassociate expressions
+  pm->add(createLoopRotatePass());            // Rotate Loop
+  pm->add(createLICMPass());                  // Hoist loop invariants
+  pm->add(createLoopUnswitchPass());
+  pm->add(createLoopIndexSplitPass());        // Split loop index
+  pm->add(createInstructionCombiningPass());  
+  pm->add(createIndVarSimplifyPass());        // Canonicalize indvars
+  pm->add(createLoopDeletionPass());          // Delete dead loops
+  pm->add(createLoopUnrollPass());          // Unroll small loops
+  pm->add(createInstructionCombiningPass());  // Clean up after the unroller
+  pm->add(createGVNPass());                   // Remove redundancies
+  pm->add(createMemCpyOptPass());             // Remove memcpy / form memset
+  pm->add(createSCCPPass());                  // Constant prop with SCCP
+
+  // Run instcombine after redundancy elimination to exploit opportunities
+  // opened up by them.
+  pm->add(createInstructionCombiningPass());
+  pm->add(createCondPropagationPass());       // Propagate conditionals
+  pm->add(createDeadStoreEliminationPass());  // Delete dead stores
+  pm->add(createAggressiveDCEPass());   // Delete dead instructions
+  pm->add(createCFGSimplificationPass());     // Merge & remove BBs
+
+  //pm->add(createStripDeadPrototypesPass());   // Get rid of dead prototypes
+  //pm->add(createDeadTypeEliminationPass());   // Eliminate dead types
+
+  //pm->add(createConstantMergePass());       // Merge dup global constants 
+  
+
+
+  mInitialized = true;
+}
 
 FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
     FnmatchRules::const_iterator& _rule_iter, 
@@ -121,6 +264,8 @@ FnmatchFunction::FnmatchFunction(FnmatchCompiler* _compiler,
 
 void
 FnmatchCompiler::Compile(const std::string& pattern, const std::string& name) {
+  if (!mInitialized) Initialize();
+
   // parse the fnmatch expression into rules
   FnmatchParser parser;
   FnmatchRules rules = parser.Parse(pattern);

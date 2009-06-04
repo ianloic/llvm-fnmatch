@@ -23,8 +23,6 @@ class Timer {
 int main(int argc, char**argv) {
   Timer setup;
   setup.start();
-  // important initialization - do this first
-  FnmatchCompiler::Initialize();
 
   FnmatchCompiler* compiler = new FnmatchCompiler();
   compiler->Compile(PATTERN);
