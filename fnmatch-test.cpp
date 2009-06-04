@@ -7,7 +7,7 @@ test(const char* pattern, const char* path) {
   FnmatchCompiler* compiler = new FnmatchCompiler();
   compiler->Compile(pattern);
   //compiler->dump();
-  //compiler->optimize();
+  compiler->optimize();
   //compiler->dump();
 
   bool result = compiler->run(path);
