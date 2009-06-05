@@ -5,7 +5,8 @@
 
 #define PATTERN "*.*"
 #define PATH "hello.txt"
-#define RUNS 1000000
+//#define RUNS 1000000
+#define RUNS 10000000
 
 class Timer {
   public:
