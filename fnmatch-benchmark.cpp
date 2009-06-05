@@ -14,7 +14,7 @@ class Timer {
     void stop() { gettimeofday(&_stop, NULL); }
     double seconds() {
       return (double)(_stop.tv_sec-_start.tv_sec) + 
-        (double)(_stop.tv_usec-_start.tv_usec) / (double)10000000;
+        (double)(_stop.tv_usec-_start.tv_usec) / (double)1000000;
     }
   private:
     struct timeval _start;
