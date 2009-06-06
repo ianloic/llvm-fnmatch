@@ -1,15 +1,15 @@
 # using autodeps code from http://www.cs.berkeley.edu/~smcpeak/autodepend/autodepend.html
 # use gnu make and gcc. duh.
 
-CPPFLAGS = $(shell llvm-config --cxxflags) -Wall -Werror -g -O2
+CPPFLAGS = $(shell llvm-config --cxxflags) -Wall -Werror -g -O0
 LDFLAGS = $(shell llvm-config --ldflags --libs core jit native)
 LD = $(CXX)
 
 BASE_OBJS = fnmatch-compiler.o fnmatch-parse.o
-PROG_OBJS = fnmatch-test.o fnmatch-benchmark.o
+PROG_OBJS = fnmatch-test.o fnmatch-benchmark.o fnmatch-statemachine.o
 OBJS = $(BASE_OBJS) $(PROG_OBJS)
 
-PROGRAMS=fnmatch-test fnmatch-benchmark
+PROGRAMS=fnmatch-test fnmatch-benchmark fnmatch-statemachine
 
 # build some programs
 all: $(PROGRAMS)
