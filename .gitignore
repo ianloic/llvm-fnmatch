@@ -3,3 +3,4 @@
 *.d
 fnmatch-test
 fnmatch-benchmark
+fnmatch-statemachine
