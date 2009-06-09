@@ -5,16 +5,21 @@
 
 from pprint import pprint
 
+from characterset import CharacterSet, distinctCharacterSets
+
 class State:
   id = 0
-  def __init__(self, name):
+  def __init__(self, name, id=None):
     self.children = []
     self.match = False
     self.name = name
-    self.id = State.id
-    State.id = State.id + 1
+    if id == None:
+      self.id = State.id
+      State.id = State.id + 1
+    else:
+      self.id = id
   def __repr__(self):
-    return 'State%d(%s)' % (self.id, self.name)
+    return 'State(%s, id=%d)' % (`self.name`, self.id)
   def add(self, charset, state):
     self.children.append((charset, state))
   def __call__(self, c):
@@ -22,83 +27,6 @@ class State:
   def dot(self):
     return ''.join(['\t%s -> %s [label="%s"]\n' % 
       (self.id, child.id, charset.label()) for charset, child in self.children])
-
-  def make_distinct_children(self):
-    '''split the children so that the character sets overlap completely or not at all'''
-    # nothing to do with one or zero children
-    if len(self.children) < 2:
-      return
-    assert len(self.children) == 2
-    sets_a, sets_b = self.children[0][0].distinct(self.children[1][0])
-    dc = []
-    for charset in sets_a:
-      dc.append((charset, self.children[0][1]))
-    for charset in sets_b:
-      dc.append((charset, self.children[1][1]))
-    self.children = [child for child in dc if not child[0].none()]
-
-
-class CharacterSet:
-  def __init__(self, inclusive, characters):
-    self.inclusive = bool(inclusive)
-    self.characters = set(characters)
-  def __contains__(self, c):
-    if self.inclusive:
-      return c in self.characters
-    else:
-      return not (c in self.characters)
-  def label(self):
-    if self.inclusive:
-      return `''.join(self.characters)`
-    else:
-      if not self.characters: return 'ANY'
-      else: return '!'+`''.join(self.characters)`
-  def __eq__(self, other):
-    return self.inclusive == other.inclusive and \
-        self.characters == other.characters
-  def __ne__(self, other):
-    return not (self == other)
-  def __hash__(self):
-    return hash('%s %s' % (self.inclusive, ''.join(self.characters)))
-
-  def union(self, other):
-    if self.inclusive == other.inclusive:
-      return CharacterSet(self.inclusive, ''.join(self.characters.union(other.characters)))
-    elif self.inclusive:
-      return CharacterSet(False, ''.join(other.characters-self.characters))
-    else:
-      return CharacterSet(False, ''.join(self.characters-other.characters))
-
-  def __sub__(self, other):
-    if self.inclusive and other.inclusive:
-      return CharacterSet(True, ''.join(self.characters-other.characters))
-    elif not self.inclusive and not other.inclusive:
-      return CharacterSet(True, ''.join(other.characters-self.characters))
-    elif self.inclusive and not other.inclusive:
-      return CharacterSet(True, ''.join(self.characters.intersection(other.characters)))
-    elif not self.inclusive and other.inclusive:
-      return CharacterSet(False, ''.join(self.characters.union(other.characters)))
-    else:
-      raise 'wtf?'
-
-  def intersection(self, other):
-    return self - (self - other)
-
-  def all(self):
-    '''matches all characters'''
-    return not self.inclusive and not self.characters
-
-  def none(self):
-    '''matches no characters'''
-    return self.inclusive and not self.characters
-
-  def __repr__(self):
-    return 'CharacterSet(%s, %s)' % (`self.inclusive`, `''.join(self.characters)`)
-
-  def distinct(self, other):
-    '''return pair of tuples of sets. none of the returned sets intersect,
-    the union of each pair is equal to self or other, respectively'''
-    return ((self-other, self.intersection(other)), (other-self, self.intersection(other)))
 
 
 class NFA:
@@ -132,10 +60,8 @@ class NFA:
       states = new_states
     return len([s for s in states if s.match]) > 0
 
-  def dot(self):
-    return 'digraph NFA {\n\trankdir=LR\n' + \
-        ''.join([state.dot() for state in self.states]) + \
-        '}\n'
+  def dot(self): 
+    return ''.join([state.dot() for state in self.states])
 
 
 class DFAState:
@@ -153,27 +79,16 @@ class DFAState:
   def addChild(self, charset, state):
     self.children.append((charset, state))
   def dot(self):
-    return ''.join(['\t%s -> %s [label="%s"]\n' % 
+    return '\t%s [label="%s"]\n' % \
+      (self.name(), ','.join([str(nfa_state.id) for nfa_state in self.nfa_states])) + \
+    ''.join(['\t%s -> %s [label="%s"]\n' % \
       (self.name(), child.name(), charset.label()) for charset, child in self.children])
-
 
 class DFA:
   def __init__(self, nfa):
     self.nfa = nfa
-    for nfa_state in nfa.states:
-      nfa_state.make_distinct_children()
     self.states = {}
     self.__processState([nfa.initial])
-#    for state in nfa.states:
-#      print 'processing: ' + `state`
-#      state.make_distinct_children()
-#      dfas = {}
-#      for charset, child_state in state.children:
-#        if not dfas.has_key(charset):
-#          dfas[charset] = []
-#        dfas[charset].append(child_state)
-#      for charset, nfa_states in dfas:
-#        dfa_state = self.getState(nfa_states)
 
   def __processState(self, nfa_states):
     # look up to see if we've processed this set of NFA states into a DFA state yet
@@ -193,108 +108,95 @@ class DFA:
           arcs[charset] = []
         arcs[charset].append(child_state)
 
-    #pprint(arcs)
-
-    # FIXME: need to make all arc charsets distinct (since they may be from multiple source arcs)
+    # make the arcs "distinct"
+    arcs = distinctArcs(arcs)
 
     for charset, child_nfa_states in arcs.items():
       dfa_state.addChild(charset, self.__processState(child_nfa_states))
 
     return dfa_state
 
-    
+  def dot(self): 
+    return ''.join([state.dot() for junk, state in self.states.items()])
 
-      
-#  def getState(self, nfa_states):
-#    states_key = ','.join([str(nfa_state.id) for nfa_state in nfa_states])
-#    if not self.states.has_key(states_key):
-#      self.states[states_key] = DFAState(nfa_states)
-#    return self.states[states_key]
+def distinctArcs(arcs):
+  '''for a dict of arcs { charset->(state,state) } produce a new dict 
+  { charset->(state, state) } that represents an equivalent mapping
+  but new charsets form a partition of the union of the original
+  charsets, where each of the new sets is a subset of one or more of
+  the old sets'''
 
-  def dot(self):
-    return 'digraph DFA {\n\trankdir=LR\n' + \
-        ''.join([state.dot() for junk, state in self.states.items()]) + \
-        '}\n'
+  #print 'distinctArcs(%s)' % `arcs`
 
+  # nothing to do with one or zero children
+  if len(arcs) < 2:
+    return arcs
 
-def test_CharacterSet():
-  # test .all() and .none()
-  assert CharacterSet(False, '').all()
-  assert CharacterSet(True, '').none()
- 
-  # test that character order is irrelevant
-  assert CharacterSet(True, 'ab') == CharacterSet(True, 'ba')
-  assert CharacterSet(False, 'ab') == CharacterSet(False, 'ba')
+  partition = distinctCharacterSets(arcs.keys())
 
-  # test equality and inequality with varying inclusivity
-  assert CharacterSet(True, 'ab') == CharacterSet(True, 'ab')
-  assert (CharacterSet(True, 'ab') != CharacterSet(True, 'ab')) == False
-  assert CharacterSet(True, 'ab') != CharacterSet(False, 'ab')
-  assert (CharacterSet(True, 'ab') == CharacterSet(False, 'ab')) == False
+  #print ' partition: %s' % `partition`
 
-  # test union with inclusive character sets
-  assert CharacterSet(True, 'ab').union(CharacterSet(True, 'bc')) == CharacterSet(True, 'abc')
-  assert CharacterSet(True, 'ab').union(CharacterSet(True, 'cd')) == CharacterSet(True, 'abcd')
+  # now we have to stick the charsets back with the appropriate states
+  charsets = {}
+  for charset in partition:
+    charsets[charset] = set()
+    for original_charset, states in arcs.items():
+      if (charset - original_charset).empty():
+        # charset is a subset of original_charset
+        charsets[charset] = charsets[charset].union(set(states))
 
-  # test union with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, '')) == CharacterSet(False,'')
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, 'cd')) == CharacterSet(False,'cd')
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, 'bc')) == CharacterSet(False,'c')
-  assert CharacterSet(False, '').union(CharacterSet(True, 'ab')) == CharacterSet(False,'')
-  assert CharacterSet(False, 'cd').union(CharacterSet(True, 'ab')) == CharacterSet(False,'cd')
-  assert CharacterSet(False, 'bc').union(CharacterSet(True, 'ab')) == CharacterSet(False,'c')
+  #print ' charsets: %s' % `charsets`
 
-  # test union with exclusive character sets
-  assert CharacterSet(False, 'ab').union(CharacterSet(False, 'bc')) == CharacterSet(False, 'abc')
-  assert CharacterSet(False, 'ab').union(CharacterSet(False, 'cd')) == CharacterSet(False, 'abcd')
+  # now, if we have multiple charsets going to the same set of states we
+  # should collapse the charsets (ie: union)
+  charset_by_states_key = {}
+  states_by_states_key = {}
+  for charset, states in charsets.items():
+    states_key = tuple([str(state.id) for state in states])
+    states_by_states_key[states_key] = states
+    if charset_by_states_key.has_key(states_key):
+      charset_by_states_key[states_key] = charset_by_states_key[states_key].union(charset)
+    else:
+      charset_by_states_key[states_key] = charset
 
-  # test difference with inclusive character sets
-  assert CharacterSet(True, 'ab') - CharacterSet(True, 'bc') == CharacterSet(True, 'a')
-  assert CharacterSet(True, 'ab') - CharacterSet(True, 'cd') == CharacterSet(True, 'ab')
+  # connect those mappings together
+  result = {}
+  for states_key, charset in charset_by_states_key.items():
+    result[charset] = states_by_states_key[states_key]
 
-  # test difference with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab') - CharacterSet(False, '') == CharacterSet(True,'')
-  assert CharacterSet(True, 'ab') - CharacterSet(False, 'cd') == CharacterSet(True,'')
-  assert CharacterSet(True, 'ab') - CharacterSet(False, 'bc') == CharacterSet(True,'b')
-  assert CharacterSet(False, '') - CharacterSet(True, 'ab') == CharacterSet(False,'ab')
-  assert CharacterSet(False, 'cd') - CharacterSet(True, 'ab') == CharacterSet(False,'abcd')
-  assert CharacterSet(False, 'bc') - CharacterSet(True, 'ab') == CharacterSet(False,'abc')
-  assert CharacterSet(True, '') - CharacterSet(False, '') == CharacterSet(True, '')
-  assert CharacterSet(False, '') - CharacterSet(True, '') == CharacterSet(False, '')
-
-  # test difference with exclusive character sets
-  assert CharacterSet(False, 'ab') - CharacterSet(False, 'bc') == CharacterSet(True, 'c')
-  assert CharacterSet(False, 'ab') - CharacterSet(False, 'cd') == CharacterSet(True, 'cd')
-
-  # test intersection with inclusive character sets
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(True, 'bc')) == CharacterSet(True, 'b')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(True, 'cd')) == CharacterSet(True, '')
-
-  # test intersection with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, '')) == CharacterSet(True, 'ab')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, 'cd')) == CharacterSet(True, 'ab')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, 'bc')) == CharacterSet(True, 'a')
-  assert CharacterSet(False, '').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'ab')
-  assert CharacterSet(False, 'cd').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'ab')
-  assert CharacterSet(False, 'bc').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'a')
-  assert CharacterSet(False, '').intersection(CharacterSet(True, '')) == CharacterSet(True, '')
-  assert CharacterSet(True, '').intersection(CharacterSet(False, '')) == CharacterSet(True, '')
+  return result
 
 
+def test_distinctArcs():
+  state1 = State('a')
+  state2 = State('b')
+  state3 = State('c')
+  assert distinctArcs({}) == {}
+  assert distinctArcs({CharacterSet(False, ''): [state1]}) == {CharacterSet(False, ''): [state1]}
+  assert distinctArcs({CharacterSet(True, 'abc'): [state1], CharacterSet(True, 'def'): [state2]}) == \
+      {CharacterSet(True, 'abc'): set([state1]), CharacterSet(True, 'def'): set([state2])}
+  assert distinctArcs({CharacterSet(False, ''): [state1], CharacterSet(True, 'abc'): [state2]}) == \
+      {CharacterSet(False, 'abc'): set([state1]), CharacterSet(True, 'abc'): set([state1,state2])}
 
 
 if __name__ == '__main__':
+  from characterset import test_CharacterSet
   test_CharacterSet()
+
+  #test_distinctArcs()
+
 #  print "CharacterSet(False, '') - CharacterSet(True, '.') = " + `CharacterSet(False, '') - CharacterSet(True, '.')`
 #  print NFA('*.txt').dot()
 #  print `NFA('*.txt')('hello.txt')`
 #  print `NFA('*.txt')('hello.txto')`
 #  print `NFA('*.txt')('hello.txt.txt')`
 
-  nfa = NFA('a*b*.txt')
+  nfa = NFA('*.txt')
+  #nfa = NFA('a*b*.txt')
+  #nfa = NFA('a*bc')
   dfa = DFA(nfa)
   #print '-' * 40
   #pprint(dfa.states)
-  print dfa.dot()
+  print 'digraph hobo {\n\trankdir=LR\n' + nfa.dot() + dfa.dot() + '}\n'
 
 
