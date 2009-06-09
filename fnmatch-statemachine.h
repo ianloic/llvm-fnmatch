@@ -2,6 +2,9 @@
 
 #include <vector>
 #include <string>
+#include <set>
+
+#include <assert.h>
 
 namespace fnmatch {
   typedef enum { 
@@ -45,22 +48,55 @@ namespace fnmatch {
       static int stateNumCounter;
   };
 
+  typedef enum {
+    CHARACTER, ALL, INCLUSIVE, EXCLUSIVE
+  } CharacterSetType;
+  class CharacterSet {
+    public:
+      CharacterSet(CharacterSetType _type, int _character)
+        : type(_type), character(_character) {
+          assert(_type == CHARACTER);
+      }
+      CharacterSet(CharacterSetType _type, std::set<int> _characterSet)
+        : type(_type), characterSet(_characterSet) {
+          assert(_type == INCLUSIVE || _type == EXCLUSIVE);
+      }
+      explicit CharacterSet(CharacterSetType _type) {
+        assert(_type == ALL);
+      }
+      // operations we need
+      CharacterSet* intersection(CharacterSet* other);
+      CharacterSet* minus(CharacterSet* other);
+
+      CharacterSetType type;
+      int character;
+      std::set<int> characterSet;
+  };
+
   // represents a finite state machine
   class StateMachine {
     public:
-      explicit StateMachine(const std::string& pattern);
+      StateMachine();
       ~StateMachine();
 
       void dot();
 
-    private:
-      // initial state in the machine
-      State* initial_state;
+    protected:
       // all of the states in the machine
       std::vector<State*> states;
       // add a state to the machine
-      inline void addState(State* state);
+      void addState(State* state);
+  };
+
+  class NFAStateMachine : public StateMachine {
+    public:
+      explicit NFAStateMachine(const std::string& pattern);
+    private:
+      // initial state in the machine
+      State* initial_state;
       // last state added
       State* last_state;
+      // add a state to the machine
+      void addState(State* state);
   };
 }

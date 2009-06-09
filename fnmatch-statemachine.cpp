@@ -7,9 +7,11 @@ using namespace fnmatch;
 
 int State::stateNumCounter = 0;
 
+StateMachine::StateMachine() { }
+
 // pattern an fnmatch pattern into a DFA
-StateMachine::StateMachine(const std::string& pattern)
-    : initial_state(NULL), last_state(NULL) {
+NFAStateMachine::NFAStateMachine(const std::string& pattern)
+  : initial_state(NULL), last_state(NULL) {
   addState(State::Initial());
   for (size_t i=0; i<pattern.size(); i++) {
     switch(pattern[i]) {
@@ -33,11 +35,16 @@ StateMachine::StateMachine(const std::string& pattern)
 
 void
 StateMachine::addState(State* state) {
+  states.push_back(state);
+}
+
+void
+NFAStateMachine::addState(State* state) {
   if (initial_state == NULL) {
     // track the first state
     initial_state = state;
   }
-  states.push_back(state);
+  StateMachine::addState(state);
   if (last_state) {
     last_state->addChild(state);
   }
@@ -49,6 +56,16 @@ StateMachine::~StateMachine() {
     delete states[i];
   }
 }
+
+#if 0
+// evaluate a string @s against the state machine
+bool
+StateMachine::evaluate(const std::string& s) {
+  State* state = initial_state;
+  for (size_t i=0; i<s.size(); i++) {
+  }
+}
+#endif
 
 
 // graphviz generation
@@ -87,6 +104,6 @@ State::dotIn(int parentNum) {
 
 
 int main(int argc, char** argv) {
-  StateMachine *sm = new StateMachine(std::string(argv[1]));
+  NFAStateMachine *sm = new NFAStateMachine(std::string(argv[1]));
   sm->dot();
 }
