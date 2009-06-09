@@ -201,8 +201,8 @@ if __name__ == '__main__':
 #  print `NFA('*.txt')('hello.txto')`
 #  print `NFA('*.txt')('hello.txt.txt')`
 
-  nfa = NFA('*.txt')
-  #nfa = NFA('a*b*.txt')
+  #nfa = NFA('*.txt')
+  nfa = NFA('a*b*.txt')
   #nfa = NFA('a*bc')
   dfa = DFA(nfa)
   #print '-' * 40
