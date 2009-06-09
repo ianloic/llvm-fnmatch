@@ -164,6 +164,16 @@ def distinctArcs(arcs):
   for states_key, charset in charset_by_states_key.items():
     result[charset] = states_by_states_key[states_key]
 
+  # check that our result matches our contract
+  # make sure that none of our character sets intersect
+  union_out = CharacterSet(True, '') # empty set
+  for cs in result.keys():
+    assert cs.disjoint(union_out)
+    union_out = union_out.union(cs)
+  # make sure that the union of result character sets == the union of the input character sets
+  union_in = reduce(lambda a,b:a.union(b), arcs.keys())
+  assert union_in == union_out
+
   return result
 
 

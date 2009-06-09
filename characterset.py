@@ -1,3 +1,5 @@
+from pprint import pprint # for debugging funs
+
 class CharacterSet:
   def __init__(self, inclusive, characters):
     self.inclusive = bool(inclusive)
@@ -57,6 +59,11 @@ class CharacterSet:
   def __repr__(self):
     return 'CharacterSet(%s, %s)' % (`self.inclusive`, `''.join(self.characters)`)
 
+  def disjoint(self, other):
+    return (self.intersection(other)).empty()
+  def intersects(self, other):
+    return not self.disjoint(other)
+
 #  def distinct(self, other):
 #    '''return pair of tuples of sets. none of the returned sets intersect,
 #    the union of each pair is equal to self or other, respectively'''
@@ -65,31 +72,61 @@ class CharacterSet:
     return (self-other, other-self, self.intersection(other))
 
 
+def __disjoin(charsets, charset):
+  '''@charsets is a set of disjoint charsets, @charset is a charset.
+  return a set of charsets with the same range as all inputs, but disjoint'''
+  # prove preconditions
+  assert isinstance(charsets, set)
+  for cs in charsets:
+    assert isinstance(cs, CharacterSet)
+  assert isinstance(charset, CharacterSet)
+
+  if len(charsets) == 0: return set([charset])
+
+  result = set([cs-charset for cs in charsets])
+  result = result.union(set([cs.intersection(charset) for cs in charsets]))
+  charsets_union = reduce(lambda a,b:a.union(b), charsets)
+  result = result.union(set([charset-charsets_union]))
+  return result
+
+
+
 def distinctCharacterSets(orig_charsets):
   '''for a set of charsets, find a set of disjoint charsets
   whose union is equal to the union of the original charsets'''
   # original_charsets contains the set of original charsets
   charsets = set(orig_charsets)
+  #pprint(charsets)
+
+  partition = reduce(__disjoin, charsets, set())
+
   #print '\ndistinctCharacterSets(%s)' % `charsets`
   # partition will hold the partition of the union of those sets
   #print `charsets`
-  partition = set((charsets.pop(),))
-  #print `charsets`
-  for o in charsets:
-    new_partition = set()
-    for p in partition:
-      new_partition = new_partition.union(set((p-o, o-p, o.intersection(p))))
-    partition = new_partition
+#  partition = set((charsets.pop(),))
+#  #print `charsets`
+#  for o in charsets:
+#    new_partition = set()
+#    for p in partition:
+#      new_partition = new_partition.union(set((p-o, o-p, o.intersection(p))))
+#    partition = new_partition
 
   # filter the empty set out of the partition
   partition = set([charset for charset in partition if not charset.empty()])
 
   #print 'partitioned %s into %s' % (`orig_charsets`, `partition`)
 
-  # check to make sure we didn't screw up
-  if partition and orig_charsets:
-    assert reduce(lambda x,y:x.union(y), partition) == \
-        reduce(lambda x,y:x.union(y), orig_charsets)
+  #pprint(partition)
+
+  # check that our result matches our contract
+  # make sure that none of our character sets intersect
+  union_out = CharacterSet(True, '') # empty set
+  for cs in partition:
+    assert cs.disjoint(union_out)
+    union_out = union_out.union(cs)
+  # make sure that the union of result character sets == the union of the input character sets
+  union_in = reduce(lambda a,b:a.union(b), orig_charsets)
+  assert union_in == union_out
 
   return partition
 
