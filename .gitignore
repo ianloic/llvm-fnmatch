@@ -1,6 +1,8 @@
 .*.swp
 *.o
 *.d
+*.pyc
+*.pyo
 fnmatch-test
 fnmatch-benchmark
 fnmatch-statemachine
