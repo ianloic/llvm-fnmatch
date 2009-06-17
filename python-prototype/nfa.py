@@ -6,6 +6,7 @@
 from pprint import pprint
 
 from characterset import CharacterSet, distinctCharacterSets
+from StringIO import StringIO
 
 class NFAState:
   id = 0
@@ -41,7 +42,10 @@ class NFA:
     nfa.states = [nfa.initial]
     state = nfa.initial
     new_state = None
-    for c in s:
+    sio = StringIO(s)
+    while True:
+      c = sio.read(1)
+      if c == '': break # end-of-string
       new_state = NFAState(`c`)
       nfa.states.append(new_state)
       if c == '?':
