@@ -17,14 +17,14 @@ if __name__ == '__main__':
   #test_distinctArcs()
 
 #  print "CharacterSet.excluding('') - CharacterSet.including('.') = " + `CharacterSet.excluding('') - CharacterSet.including('.')`
-#  print NFA('*.txt').dot()
-#  print `NFA('*.txt')('hello.txt')`
-#  print `NFA('*.txt')('hello.txto')`
-#  print `NFA('*.txt')('hello.txt.txt')`
+#  print NFA.fnmatch('*.txt').dot()
+#  print `NFA.fnmatch('*.txt')('hello.txt')`
+#  print `NFA.fnmatch('*.txt')('hello.txto')`
+#  print `NFA.fnmatch('*.txt')('hello.txt.txt')`
 
-  #nfa = NFA('*.txt')
-  nfa = NFA('*.cpp')
-  #nfa = NFA('a*bc')
+  #nfa = NFA.fnmatch('*.txt')
+  nfa = NFA.fnmatch('*.cpp')
+  #nfa = NFA.fnmatch('a*bc')
   dfa = DFA(nfa)
   #print '-' * 40
   #pprint(dfa.states)

@@ -25,20 +25,25 @@ class NFAState:
   def __call__(self, c):
     return [x[1] for x in self.children if c in x[0]]
   def dot(self, dot):
-    dot.node(self.id)
+    if self.match:
+      dot.node(self.id, peripheries=2)
+    else:
+      dot.node(self.id)
     for charset, child in self.children:
       dot.arc(self.id, child.id, charset.label())
 
 
 class NFA:
-  def __init__(self, s):
-    self.initial = NFAState('INITIAL')
-    self.states = [self.initial]
-    state = self.initial
+  @classmethod
+  def fnmatch(klass, s):
+    nfa = NFA()
+    nfa.initial = NFAState('INITIAL')
+    nfa.states = [nfa.initial]
+    state = nfa.initial
     new_state = None
     for c in s:
       new_state = NFAState(`c`)
-      self.states.append(new_state)
+      nfa.states.append(new_state)
       if c == '?':
         state.add(CharacterSet.excluding(''), new_state)
       elif c == '*':
@@ -48,6 +53,7 @@ class NFA:
         state.add(CharacterSet.including(c), new_state)
       state = new_state
     state.match = True
+    return nfa
 
   def __call__(self, s):
     states = set([self.initial])

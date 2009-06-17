@@ -5,8 +5,8 @@ class Dot:
     self.nodes = []
     self.arcs = []
 
-  def node(self, name, label=None):
-    self.nodes.append((name, label))
+  def node(self, name, label=None, peripheries=1):
+    self.nodes.append((name, label, peripheries))
 
   def arc(self, node1, node2, label=None):
     self.arcs.append((node1, node2, label))
@@ -14,11 +14,11 @@ class Dot:
   def __str__(self):
     s = 'digraph %s {\n\trankdir=LR\n' % self.name
 
-    for name, label in self.nodes:
+    for name, label, peripheries in self.nodes:
       if label:
-        s = s + ('\t%s [label="%s"]\n' % (name, label))
+        s = s + ('\t%s [label="%s",peripheries=%d]\n' % (name, label, peripheries))
       else:
-        s = s + ('\t%s\n' % (name))
+        s = s + ('\t%s [peripheries=%d]\n' % (name, peripheries))
 
     for node1, node2, label in self.arcs:
       if label:

@@ -12,7 +12,7 @@ class DFAState:
   def __init__(self, nfa_states):
     self.children = []
     self.nfa_states = nfa_states
-    self.match = False
+    self.match = any([state.match for state in nfa_states])
     self.id = DFAState.id
     DFAState.id = DFAState.id + 1
   def name(self):
@@ -22,7 +22,12 @@ class DFAState:
   def addChild(self, charset, state):
     self.children.append((charset, state))
   def dot(self, dot):
-    dot.node(self.name(), ','.join([str(nfa_state.id) for nfa_state in self.nfa_states]))
+    label = ','.join([str(nfa_state.id) for nfa_state in self.nfa_states])
+    if self.match:
+      dot.node(self.name(), label, peripheries=2)
+    else:
+      dot.node(self.name(), label)
+
     for charset, child in self.children:
       dot.arc(self.name(), child.name(), charset.label())
 
