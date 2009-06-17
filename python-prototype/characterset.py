@@ -4,6 +4,15 @@ class CharacterSet:
   def __init__(self, inclusive, characters):
     self.inclusive = bool(inclusive)
     self.characters = set(characters)
+
+  @classmethod
+  def including(klass, characters):
+    return klass(True, characters)
+
+  @classmethod
+  def excluding(klass, characters):
+    return klass(False, characters)
+
   def __contains__(self, c):
     if self.inclusive:
       return c in self.characters
@@ -25,23 +34,23 @@ class CharacterSet:
 
   def union(self, other):
     if self.inclusive and other.inclusive:
-      return CharacterSet(True, self.characters.union(other.characters))
+      return CharacterSet.including(self.characters.union(other.characters))
     elif not self.inclusive and not other.inclusive:
-      return CharacterSet(False, self.characters.intersection(other.characters))
+      return CharacterSet.excluding(self.characters.intersection(other.characters))
     elif self.inclusive:
-      return CharacterSet(False, other.characters-self.characters)
+      return CharacterSet.excluding(other.characters-self.characters)
     else:
-      return CharacterSet(False, self.characters-other.characters)
+      return CharacterSet.excluding(self.characters-other.characters)
 
   def __sub__(self, other):
     if self.inclusive and other.inclusive:
-      return CharacterSet(True, self.characters-other.characters)
+      return CharacterSet.including(self.characters-other.characters)
     elif not self.inclusive and not other.inclusive:
-      return CharacterSet(True, other.characters-self.characters)
+      return CharacterSet.including(other.characters-self.characters)
     elif self.inclusive and not other.inclusive:
-      return CharacterSet(True, self.characters.intersection(other.characters))
+      return CharacterSet.including(self.characters.intersection(other.characters))
     elif not self.inclusive and other.inclusive:
-      return CharacterSet(False, self.characters.union(other.characters))
+      return CharacterSet.excluding(self.characters.union(other.characters))
     else:
       raise 'wtf?'
 
@@ -120,7 +129,7 @@ def distinctCharacterSets(orig_charsets):
 
   # check that our result matches our contract
   # make sure that none of our character sets intersect
-  union_out = CharacterSet(True, '') # empty set
+  union_out = CharacterSet.including('') # empty set
   for cs in partition:
     assert cs.disjoint(union_out)
     union_out = union_out.union(cs)
@@ -133,103 +142,103 @@ def distinctCharacterSets(orig_charsets):
 
 def test_CharacterSet():
   # test .all() and .empty()
-  assert CharacterSet(False, '').all()
-  assert CharacterSet(True, '').empty()
+  assert CharacterSet.excluding('').all()
+  assert CharacterSet.including('').empty()
  
   # test that character order is irrelevant
-  assert CharacterSet(True, 'ab') == CharacterSet(True, 'ba')
-  assert CharacterSet(False, 'ab') == CharacterSet(False, 'ba')
+  assert CharacterSet.including('ab') == CharacterSet.including('ba')
+  assert CharacterSet.excluding('ab') == CharacterSet.excluding('ba')
 
   # test equality and inequality with varying inclusivity
-  assert CharacterSet(True, 'ab') == CharacterSet(True, 'ab')
-  assert (CharacterSet(True, 'ab') != CharacterSet(True, 'ab')) == False
-  assert CharacterSet(True, 'ab') != CharacterSet(False, 'ab')
-  assert (CharacterSet(True, 'ab') == CharacterSet(False, 'ab')) == False
+  assert CharacterSet.including('ab') == CharacterSet.including('ab')
+  assert (CharacterSet.including('ab') != CharacterSet.including('ab')) == False
+  assert CharacterSet.including('ab') != CharacterSet.excluding('ab')
+  assert (CharacterSet.including('ab') == CharacterSet.excluding('ab')) == False
 
   # test union with inclusive character sets
-  assert CharacterSet(True, 'ab').union(CharacterSet(True, 'bc')) == CharacterSet(True, 'abc')
-  assert CharacterSet(True, 'ab').union(CharacterSet(True, 'cd')) == CharacterSet(True, 'abcd')
+  assert CharacterSet.including('ab').union(CharacterSet.including('bc')) == CharacterSet.including('abc')
+  assert CharacterSet.including('ab').union(CharacterSet.including('cd')) == CharacterSet.including('abcd')
 
   # test union with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, '')) == CharacterSet(False,'')
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, 'cd')) == CharacterSet(False,'cd')
-  assert CharacterSet(True, 'ab').union(CharacterSet(False, 'bc')) == CharacterSet(False,'c')
-  assert CharacterSet(False, '').union(CharacterSet(True, 'ab')) == CharacterSet(False,'')
-  assert CharacterSet(False, 'cd').union(CharacterSet(True, 'ab')) == CharacterSet(False,'cd')
-  assert CharacterSet(False, 'bc').union(CharacterSet(True, 'ab')) == CharacterSet(False,'c')
+  assert CharacterSet.including('ab').union(CharacterSet.excluding('')) == CharacterSet(False,'')
+  assert CharacterSet.including('ab').union(CharacterSet.excluding('cd')) == CharacterSet(False,'cd')
+  assert CharacterSet.including('ab').union(CharacterSet.excluding('bc')) == CharacterSet(False,'c')
+  assert CharacterSet.excluding('').union(CharacterSet.including('ab')) == CharacterSet(False,'')
+  assert CharacterSet.excluding('cd').union(CharacterSet.including('ab')) == CharacterSet(False,'cd')
+  assert CharacterSet.excluding('bc').union(CharacterSet.including('ab')) == CharacterSet(False,'c')
 
   # test union with exclusive character sets
-  assert CharacterSet(False, 'ab').union(CharacterSet(False, 'bc')) == CharacterSet(False, 'b')
-  assert CharacterSet(False, 'ab').union(CharacterSet(False, 'cd')) == CharacterSet(False, '')
+  assert CharacterSet.excluding('ab').union(CharacterSet.excluding('bc')) == CharacterSet.excluding('b')
+  assert CharacterSet.excluding('ab').union(CharacterSet.excluding('cd')) == CharacterSet.excluding('')
 
   # test difference with inclusive character sets
-  assert CharacterSet(True, 'ab') - CharacterSet(True, 'bc') == CharacterSet(True, 'a')
-  assert CharacterSet(True, 'ab') - CharacterSet(True, 'cd') == CharacterSet(True, 'ab')
+  assert CharacterSet.including('ab') - CharacterSet.including('bc') == CharacterSet.including('a')
+  assert CharacterSet.including('ab') - CharacterSet.including('cd') == CharacterSet.including('ab')
 
   # test difference with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab') - CharacterSet(False, '') == CharacterSet(True,'')
-  assert CharacterSet(True, 'ab') - CharacterSet(False, 'cd') == CharacterSet(True,'')
-  assert CharacterSet(True, 'ab') - CharacterSet(False, 'bc') == CharacterSet(True,'b')
-  assert CharacterSet(False, '') - CharacterSet(True, 'ab') == CharacterSet(False,'ab')
-  assert CharacterSet(False, 'cd') - CharacterSet(True, 'ab') == CharacterSet(False,'abcd')
-  assert CharacterSet(False, 'bc') - CharacterSet(True, 'ab') == CharacterSet(False,'abc')
-  assert CharacterSet(True, '') - CharacterSet(False, '') == CharacterSet(True, '')
-  assert CharacterSet(False, '') - CharacterSet(True, '') == CharacterSet(False, '')
+  assert CharacterSet.including('ab') - CharacterSet.excluding('') == CharacterSet(True,'')
+  assert CharacterSet.including('ab') - CharacterSet.excluding('cd') == CharacterSet(True,'')
+  assert CharacterSet.including('ab') - CharacterSet.excluding('bc') == CharacterSet(True,'b')
+  assert CharacterSet.excluding('') - CharacterSet.including('ab') == CharacterSet(False,'ab')
+  assert CharacterSet.excluding('cd') - CharacterSet.including('ab') == CharacterSet(False,'abcd')
+  assert CharacterSet.excluding('bc') - CharacterSet.including('ab') == CharacterSet(False,'abc')
+  assert CharacterSet.including('') - CharacterSet.excluding('') == CharacterSet.including('')
+  assert CharacterSet.excluding('') - CharacterSet.including('') == CharacterSet.excluding('')
 
   # test difference with exclusive character sets
-  assert CharacterSet(False, 'ab') - CharacterSet(False, 'bc') == CharacterSet(True, 'c')
-  assert CharacterSet(False, 'ab') - CharacterSet(False, 'cd') == CharacterSet(True, 'cd')
+  assert CharacterSet.excluding('ab') - CharacterSet.excluding('bc') == CharacterSet.including('c')
+  assert CharacterSet.excluding('ab') - CharacterSet.excluding('cd') == CharacterSet.including('cd')
 
   # test intersection with inclusive character sets
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(True, 'bc')) == CharacterSet(True, 'b')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(True, 'cd')) == CharacterSet(True, '')
+  assert CharacterSet.including('ab').intersection(CharacterSet.including('bc')) == CharacterSet.including('b')
+  assert CharacterSet.including('ab').intersection(CharacterSet.including('cd')) == CharacterSet.including('')
 
   # test intersection with inclusive and exclusive character sets
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, '')) == CharacterSet(True, 'ab')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, 'cd')) == CharacterSet(True, 'ab')
-  assert CharacterSet(True, 'ab').intersection(CharacterSet(False, 'bc')) == CharacterSet(True, 'a')
-  assert CharacterSet(False, '').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'ab')
-  assert CharacterSet(False, 'cd').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'ab')
-  assert CharacterSet(False, 'bc').intersection(CharacterSet(True, 'ab')) == CharacterSet(True, 'a')
-  assert CharacterSet(False, '').intersection(CharacterSet(True, '')) == CharacterSet(True, '')
-  assert CharacterSet(True, '').intersection(CharacterSet(False, '')) == CharacterSet(True, '')
+  assert CharacterSet.including('ab').intersection(CharacterSet.excluding('')) == CharacterSet.including('ab')
+  assert CharacterSet.including('ab').intersection(CharacterSet.excluding('cd')) == CharacterSet.including('ab')
+  assert CharacterSet.including('ab').intersection(CharacterSet.excluding('bc')) == CharacterSet.including('a')
+  assert CharacterSet.excluding('').intersection(CharacterSet.including('ab')) == CharacterSet.including('ab')
+  assert CharacterSet.excluding('cd').intersection(CharacterSet.including('ab')) == CharacterSet.including('ab')
+  assert CharacterSet.excluding('bc').intersection(CharacterSet.including('ab')) == CharacterSet.including('a')
+  assert CharacterSet.excluding('').intersection(CharacterSet.including('')) == CharacterSet.including('')
+  assert CharacterSet.including('').intersection(CharacterSet.excluding('')) == CharacterSet.including('')
 
   # test all this disjoint set crap
-  assert distinctCharacterSets([CharacterSet(True, '')]) == set()
-  assert distinctCharacterSets([CharacterSet(False, '')]) == set([CharacterSet(False, '')])
-  assert distinctCharacterSets([CharacterSet(False, 'abc')]) == set([CharacterSet(False, 'abc')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc')]) == set([CharacterSet(True, 'abc')])
+  assert distinctCharacterSets([CharacterSet.including('')]) == set()
+  assert distinctCharacterSets([CharacterSet.excluding('')]) == set([CharacterSet.excluding('')])
+  assert distinctCharacterSets([CharacterSet.excluding('abc')]) == set([CharacterSet.excluding('abc')])
+  assert distinctCharacterSets([CharacterSet.including('abc')]) == set([CharacterSet.including('abc')])
 
-  assert distinctCharacterSets([CharacterSet(True, ''), CharacterSet(False, '')]) == \
-      set([CharacterSet(False, '')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(False, '')]) == \
-      set([CharacterSet(False, 'abc'), CharacterSet(True, 'abc')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(False, 'abc')]) == \
-      set([CharacterSet(False, 'abc'), CharacterSet(True, 'abc')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(False, 'cde')]) == \
-      set([CharacterSet(True, 'ab'), CharacterSet(True, 'c'), CharacterSet(False,'abcde')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(False, 'def')]) == \
-      set([CharacterSet(True, 'abc'), CharacterSet(False,'abcdef')])
+  assert distinctCharacterSets([CharacterSet.including(''), CharacterSet.excluding('')]) == \
+      set([CharacterSet.excluding('')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.excluding('')]) == \
+      set([CharacterSet.excluding('abc'), CharacterSet.including('abc')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.excluding('abc')]) == \
+      set([CharacterSet.excluding('abc'), CharacterSet.including('abc')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.excluding('cde')]) == \
+      set([CharacterSet.including('ab'), CharacterSet.including('c'), CharacterSet(False,'abcde')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.excluding('def')]) == \
+      set([CharacterSet.including('abc'), CharacterSet(False,'abcdef')])
 
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(True, 'abc')]) == \
-      set([CharacterSet(True, 'abc')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(True, 'cde')]) == \
-      set([CharacterSet(True, 'ab'), CharacterSet(True, 'c'), CharacterSet(True, 'de'),])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(True, 'def')]) == \
-      set([CharacterSet(True, 'abc'), CharacterSet(True, 'def')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.including('abc')]) == \
+      set([CharacterSet.including('abc')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.including('cde')]) == \
+      set([CharacterSet.including('ab'), CharacterSet.including('c'), CharacterSet.including('de'),])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.including('def')]) == \
+      set([CharacterSet.including('abc'), CharacterSet.including('def')])
 
-  assert distinctCharacterSets([CharacterSet(False, 'abc'), CharacterSet(False, 'abc')]) == \
-      set([CharacterSet(False, 'abc')])
-  assert distinctCharacterSets([CharacterSet(False, 'abc'), CharacterSet(False, 'def')]) == \
-      set([CharacterSet(True, 'abc'), CharacterSet(True, 'def'), CharacterSet(False, 'abcdef')])
-  assert distinctCharacterSets([CharacterSet(False, 'abc'), CharacterSet(False, 'cde')]) == \
-      set([CharacterSet(True, 'ab'), CharacterSet(True, 'de'), CharacterSet(False, 'abcde')])
+  assert distinctCharacterSets([CharacterSet.excluding('abc'), CharacterSet.excluding('abc')]) == \
+      set([CharacterSet.excluding('abc')])
+  assert distinctCharacterSets([CharacterSet.excluding('abc'), CharacterSet.excluding('def')]) == \
+      set([CharacterSet.including('abc'), CharacterSet.including('def'), CharacterSet.excluding('abcdef')])
+  assert distinctCharacterSets([CharacterSet.excluding('abc'), CharacterSet.excluding('cde')]) == \
+      set([CharacterSet.including('ab'), CharacterSet.including('de'), CharacterSet.excluding('abcde')])
 
-  assert distinctCharacterSets([CharacterSet(True, 'a'), CharacterSet(True, 'b'), CharacterSet(True, 'c')]) == \
-      set([CharacterSet(True, 'a'), CharacterSet(True, 'b'), CharacterSet(True, 'c')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(True, 'b'), CharacterSet(True, 'c')]) == \
-      set([CharacterSet(True, 'a'), CharacterSet(True, 'b'), CharacterSet(True, 'c')])
-  assert distinctCharacterSets([CharacterSet(True, 'abc'), CharacterSet(True, 'b'), CharacterSet(True, 'cde')]) == \
-      set([CharacterSet(True, 'a'), CharacterSet(True, 'b'), CharacterSet(True, 'c'), CharacterSet(True, 'de')])
+  assert distinctCharacterSets([CharacterSet.including('a'), CharacterSet.including('b'), CharacterSet.including('c')]) == \
+      set([CharacterSet.including('a'), CharacterSet.including('b'), CharacterSet.including('c')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.including('b'), CharacterSet.including('c')]) == \
+      set([CharacterSet.including('a'), CharacterSet.including('b'), CharacterSet.including('c')])
+  assert distinctCharacterSets([CharacterSet.including('abc'), CharacterSet.including('b'), CharacterSet.including('cde')]) == \
+      set([CharacterSet.including('a'), CharacterSet.including('b'), CharacterSet.including('c'), CharacterSet.including('de')])
 
 

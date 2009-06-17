@@ -39,12 +39,12 @@ class NFA:
       new_state = NFAState(`c`)
       self.states.append(new_state)
       if c == '?':
-        state.add(CharacterSet(False, ''), new_state)
+        state.add(CharacterSet.excluding(''), new_state)
       elif c == '*':
-        state.add(CharacterSet(False, ''), new_state)
-        new_state.add(CharacterSet(False, ''), new_state)
+        state.add(CharacterSet.excluding(''), new_state)
+        new_state.add(CharacterSet.excluding(''), new_state)
       else:
-        state.add(CharacterSet(True, c), new_state)
+        state.add(CharacterSet.including(c), new_state)
       state = new_state
     state.match = True
 

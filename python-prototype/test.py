@@ -5,7 +5,6 @@
 
 from pprint import pprint
 
-from characterset import CharacterSet, distinctCharacterSets
 from dfa import DFA
 from nfa import NFA
 
@@ -15,7 +14,7 @@ if __name__ == '__main__':
 
   #test_distinctArcs()
 
-#  print "CharacterSet(False, '') - CharacterSet(True, '.') = " + `CharacterSet(False, '') - CharacterSet(True, '.')`
+#  print "CharacterSet.excluding('') - CharacterSet.including('.') = " + `CharacterSet.excluding('') - CharacterSet.including('.')`
 #  print NFA('*.txt').dot()
 #  print `NFA('*.txt')('hello.txt')`
 #  print `NFA('*.txt')('hello.txto')`

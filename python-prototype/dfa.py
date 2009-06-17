@@ -109,7 +109,7 @@ def distinctArcs(arcs):
 
   # check that our result matches our contract
   # make sure that none of our character sets intersect
-  union_out = CharacterSet(True, '') # empty set
+  union_out = CharacterSet.including('') # empty set
   for cs in result.keys():
     assert cs.disjoint(union_out)
     union_out = union_out.union(cs)
@@ -125,10 +125,10 @@ def test_distinctArcs():
   state2 = NFAState('b')
   state3 = NFAState('c')
   assert distinctArcs({}) == {}
-  assert distinctArcs({CharacterSet(False, ''): [state1]}) == {CharacterSet(False, ''): [state1]}
-  assert distinctArcs({CharacterSet(True, 'abc'): [state1], CharacterSet(True, 'def'): [state2]}) == \
-      {CharacterSet(True, 'abc'): set([state1]), CharacterSet(True, 'def'): set([state2])}
-  assert distinctArcs({CharacterSet(False, ''): [state1], CharacterSet(True, 'abc'): [state2]}) == \
-      {CharacterSet(False, 'abc'): set([state1]), CharacterSet(True, 'abc'): set([state1,state2])}
+  assert distinctArcs({CharacterSet.excluding(''): [state1]}) == {CharacterSet.excluding(''): [state1]}
+  assert distinctArcs({CharacterSet.including('abc'): [state1], CharacterSet.including('def'): [state2]}) == \
+      {CharacterSet.including('abc'): set([state1]), CharacterSet.including('def'): set([state2])}
+  assert distinctArcs({CharacterSet.excluding(''): [state1], CharacterSet.including('abc'): [state2]}) == \
+      {CharacterSet.excluding('abc'): set([state1]), CharacterSet.including('abc'): set([state1,state2])}
 
 
