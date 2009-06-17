@@ -24,9 +24,10 @@ class NFAState:
     self.children.append((charset, state))
   def __call__(self, c):
     return [x[1] for x in self.children if c in x[0]]
-  def dot(self):
-    return ''.join(['\t%s -> %s [label="%s"]\n' % 
-      (self.id, child.id, charset.label()) for charset, child in self.children])
+  def dot(self, dot):
+    dot.node(self.id)
+    for charset, child in self.children:
+      dot.arc(self.id, child.id, charset.label())
 
 
 class NFA:
@@ -60,7 +61,8 @@ class NFA:
       states = new_states
     return len([s for s in states if s.match]) > 0
 
-  def dot(self): 
-    return ''.join([state.dot() for state in self.states])
+  def dot(self, dot): 
+    for state in self.states:
+      state.dot(dot)
 
 

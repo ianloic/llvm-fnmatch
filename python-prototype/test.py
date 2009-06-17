@@ -8,6 +8,8 @@ from pprint import pprint
 from dfa import DFA
 from nfa import NFA
 
+from dot import Dot
+
 if __name__ == '__main__':
   from characterset import test_CharacterSet
   test_CharacterSet()
@@ -26,6 +28,10 @@ if __name__ == '__main__':
   dfa = DFA(nfa)
   #print '-' * 40
   #pprint(dfa.states)
-  print 'digraph hobo {\n\trankdir=LR\n' + nfa.dot() + dfa.dot() + '}\n'
 
+  dot = Dot('hobo')
+  nfa.dot(dot)
+  dfa.dot(dot)
+  dot.show()
+  #print str(dot)
 

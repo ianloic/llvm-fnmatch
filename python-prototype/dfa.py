@@ -21,11 +21,11 @@ class DFAState:
     return 'DFAState%s(%s)' % (self.name(), `self.nfa_states`)
   def addChild(self, charset, state):
     self.children.append((charset, state))
-  def dot(self):
-    return '\t%s [label="%s"]\n' % \
-      (self.name(), ','.join([str(nfa_state.id) for nfa_state in self.nfa_states])) + \
-    ''.join(['\t%s -> %s [label="%s"]\n' % \
-      (self.name(), child.name(), charset.label()) for charset, child in self.children])
+  def dot(self, dot):
+    dot.node(self.name(), ','.join([str(nfa_state.id) for nfa_state in self.nfa_states]))
+    for charset, child in self.children:
+      dot.arc(self.name(), child.name(), charset.label())
+
 
 class DFA:
   def __init__(self, nfa):
@@ -59,8 +59,10 @@ class DFA:
 
     return dfa_state
 
-  def dot(self): 
-    return ''.join([state.dot() for junk, state in self.states.items()])
+  def dot(self, dot): 
+    for state in self.states.values():
+      state.dot(dot)
+
 
 def distinctArcs(arcs):
   '''for a dict of arcs { charset->(state,state) } produce a new dict 
