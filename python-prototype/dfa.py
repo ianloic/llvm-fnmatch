@@ -13,9 +13,8 @@ class DFAState(State):
     State.__init__(self, 
         name=','.join([nfa_state.name for nfa_state in nfa_states]),
         match=any([state.match for state in nfa_states]))
-    self.nfa_states = nfa_states
   def __repr__(self):
-    return 'DFAState%s(%s)' % (self.name, `self.nfa_states`)
+    return 'DFAState(%s)' % (self.name)
 
 
 class DFA(StateMachine):
