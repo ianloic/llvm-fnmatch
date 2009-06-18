@@ -4,49 +4,32 @@
 # states are functions f(c) -> set of states
 
 from pprint import pprint
-
-from characterset import CharacterSet, distinctCharacterSets
 from StringIO import StringIO
 
-class NFAState:
-  id = 0
-  def __init__(self, name, id=None):
-    self.children = []
-    self.match = False
-    self.name = name
-    if id == None:
-      self.id = NFAState.id
-      NFAState.id = NFAState.id + 1
-    else:
-      self.id = id
+from characterset import CharacterSet, distinctCharacterSets
+from fsm import State, StateMachine
+
+class NFAState(State):
+  num = 1
+  def __init__(self):
+    State.__init__(self, name=str(NFAState.num))
+    NFAState.num = NFAState.num + 1
+
   def __repr__(self):
     return 'NFAState(%s, id=%d)' % (`self.name`, self.id)
-  def add(self, charset, state):
-    self.children.append((charset, state))
-  def __call__(self, c):
-    return [x[1] for x in self.children if c in x[0]]
-  def dot(self, dot):
-    if self.match:
-      dot.node(self.id, peripheries=2)
-    else:
-      dot.node(self.id)
-    for charset, child in self.children:
-      dot.arc(self.id, child.id, charset.label())
 
 
-class NFA:
+class NFA(StateMachine):
   @classmethod
   def fnmatch(klass, s):
-    nfa = NFA()
-    nfa.initial = NFAState('INITIAL')
-    nfa.states = [nfa.initial]
+    nfa = NFA(NFAState())
     state = nfa.initial
     new_state = None
     sio = StringIO(s)
     while True:
       c = sio.read(1)
       if c == '': break # end-of-string
-      new_state = NFAState(`c`)
+      new_state = NFAState()
       nfa.states.append(new_state)
       if c == '?':
         # single-character wildcard
@@ -86,6 +69,9 @@ class NFA:
       state = new_state
     state.match = True
     return nfa
+
+  def __init__(self, initial, states=[]):
+    StateMachine.__init__(self, initial, states)
 
   def __call__(self, s):
     states = set([self.initial])

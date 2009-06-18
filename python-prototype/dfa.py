@@ -6,47 +6,34 @@
 from pprint import pprint
 
 from characterset import CharacterSet, distinctCharacterSets
+from fsm import State, StateMachine
 
-class DFAState:
-  id = 0
+class DFAState(State):
   def __init__(self, nfa_states):
-    self.children = []
+    State.__init__(self, 
+        name=','.join([nfa_state.name for nfa_state in nfa_states]))
     self.nfa_states = nfa_states
     self.match = any([state.match for state in nfa_states])
-    self.id = DFAState.id
-    DFAState.id = DFAState.id + 1
-  def name(self):
-    return chr(65+self.id)
   def __repr__(self):
-    return 'DFAState%s(%s)' % (self.name(), `self.nfa_states`)
-  def addChild(self, charset, state):
-    self.children.append((charset, state))
-  def dot(self, dot):
-    label = ','.join([str(nfa_state.id) for nfa_state in self.nfa_states])
-    if self.match:
-      dot.node(self.name(), label, peripheries=2)
-    else:
-      dot.node(self.name(), label)
-
-    for charset, child in self.children:
-      dot.arc(self.name(), child.name(), charset.label())
+    return 'DFAState%s(%s)' % (self.name, `self.nfa_states`)
 
 
-class DFA:
+class DFA(StateMachine):
   def __init__(self, nfa):
-    self.nfa = nfa
-    self.states = {}
-    self.__processNFAState([nfa.initial])
+    # stores a map of states-key -> state while we build the DFA
+    known_states = {}
+    initial = self.__processNFAState([nfa.initial], known_states)
+    StateMachine.__init__(self, initial, known_states.values())
 
-  def __processNFAState(self, nfa_states):
+  def __processNFAState(self, nfa_states, known_states):
     # look up to see if we've processed this set of NFA states into a DFA state yet
     states_key = tuple([str(nfa_state.id) for nfa_state in nfa_states])
-    if self.states.has_key(states_key):
-      return self.states[states_key]
+    if known_states.has_key(states_key):
+      return known_states[states_key]
     # nope, make a new one
     dfa_state = DFAState(nfa_states)
     # stash it in the hash table
-    self.states[states_key] = dfa_state
+    known_states[states_key] = dfa_state
 
     # find all the arcs going out from the set of NFA nodes that this DFA node represents
     arcs = {}
@@ -60,14 +47,10 @@ class DFA:
     arcs = distinctArcs(arcs)
 
     for charset, child_nfa_states in arcs.items():
-      dfa_state.addChild(charset, self.__processNFAState(child_nfa_states))
+      dfa_state.add(charset, 
+        self.__processNFAState(child_nfa_states, known_states))
 
     return dfa_state
-
-  def dot(self, dot): 
-    for state in self.states.values():
-      state.dot(dot)
-
 
 def distinctArcs(arcs):
   '''for a dict of arcs { charset->(state,state) } produce a new dict 
@@ -128,9 +111,10 @@ def distinctArcs(arcs):
 
 
 def test_distinctArcs():
-  state1 = NFAState('a')
-  state2 = NFAState('b')
-  state3 = NFAState('c')
+  from nfa import NFAState
+  state1 = NFAState()
+  state2 = NFAState()
+  state3 = NFAState()
   assert distinctArcs({}) == {}
   assert distinctArcs({CharacterSet.excluding(''): [state1]}) == {CharacterSet.excluding(''): [state1]}
   assert distinctArcs({CharacterSet.including('abc'): [state1], CharacterSet.including('def'): [state2]}) == \
