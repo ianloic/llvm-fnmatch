@@ -30,8 +30,11 @@ class Dot:
 
 
   def show(self):
-    from os import popen
-    pipe = popen('dot -Txlib', 'w')
+    from os import popen, system
+    from tempfile import mktemp
+    filename = '%s.png' % mktemp()
+    pipe = popen('dot -Tpng -o %s' % filename, 'w')
     pipe.write(str(self))
     pipe.close()
+    system('gnome-open %s' % filename)
 

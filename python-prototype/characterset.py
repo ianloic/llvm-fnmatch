@@ -13,6 +13,12 @@ class CharacterSet:
   def excluding(klass, characters):
     return klass(False, characters)
 
+  @classmethod
+  def range(klass, start, end):
+    if end < start:
+      start, end = end, start
+    return klass(True, [chr(c) for c in range(ord(start), ord(end))])
+
   def __contains__(self, c):
     if self.inclusive:
       return c in self.characters

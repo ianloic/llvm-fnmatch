@@ -23,7 +23,8 @@ if __name__ == '__main__':
 #  print `NFA.fnmatch('*.txt')('hello.txt.txt')`
 
   #nfa = NFA.fnmatch('*.txt')
-  nfa = NFA.fnmatch('*.cpp')
+  #nfa = NFA.fnmatch('*.cpp')
+  nfa = NFA.fnmatch('[a-zA-Z1-90]*.cpp')
   #nfa = NFA.fnmatch('a*bc')
   dfa = DFA(nfa)
   #print '-' * 40

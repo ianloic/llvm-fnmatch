@@ -49,10 +49,38 @@ class NFA:
       new_state = NFAState(`c`)
       nfa.states.append(new_state)
       if c == '?':
+        # single-character wildcard
         state.add(CharacterSet.excluding(''), new_state)
       elif c == '*':
+        # multi-character wildcard
         state.add(CharacterSet.excluding(''), new_state)
         new_state.add(CharacterSet.excluding(''), new_state)
+      elif c == '[':
+        # bracket expression
+        c = sio.read(1)
+        if c == '!': # inverted
+          inverted = True
+          c = sio.read(1)
+        else:
+          inverted = False
+        charset = CharacterSet.including('')
+        last_char = None
+        while c != ']':
+          if c == '':
+            raise 'unterminated bracket expression'
+          if c == '-' and last_char:
+            c = sio.read(1)
+            charset = charset.union(CharacterSet.range(last_char, c))
+            last_char = None
+            c = sio.read(1)
+            continue
+          charset = charset.union(CharacterSet.including(c))
+          last_char = c # save last character
+          c = sio.read(1)
+        if inverted:
+          state.add(CharacterSet.excluding('') - charset, new_state)
+        else:
+          state.add(charset, new_state)
       else:
         state.add(CharacterSet.including(c), new_state)
       state = new_state
