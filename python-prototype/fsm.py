@@ -25,6 +25,9 @@ class State:
   def __call__(self, c):
     return [node for charset, node in self.children if c in charset]
 
+  def __repr__(self):
+    return '%s(%s)' % (self.__class__.__name__, self.name)
+
 
 class StateMachine:
   def __init__(self, initial, states=[]):
@@ -36,3 +39,16 @@ class StateMachine:
   def dot(self, dot): 
     for state in self.states:
       state.dot(dot)
+
+  def __call__(self, s):
+    states = set([self.initial])
+    for c in s:
+      if len(states) == 0:
+        return False
+      new_states = set()
+      for state in states:
+        new_states = new_states.union(state(c))
+      states = new_states
+    return len([s for s in states if s.match]) > 0
+
+

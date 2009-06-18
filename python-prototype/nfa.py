@@ -10,9 +10,7 @@ from characterset import CharacterSet, distinctCharacterSets
 from fsm import State, StateMachine
 
 class NFAState(State):
-  def __repr__(self):
-    return 'NFAState(%s, id=%d)' % (`self.name`, self.id)
-
+  pass
 
 class NFA(StateMachine):
   @classmethod
@@ -67,18 +65,6 @@ class NFA(StateMachine):
 
   def __init__(self, initial, states=[]):
     StateMachine.__init__(self, initial, states)
-
-  def __call__(self, s):
-    states = set([self.initial])
-    for c in s:
-      print 'matching against %s, states: %s' % (c, `states`)
-      if len(states) == 0:
-        return False
-      new_states = set()
-      for state in states:
-        new_states = new_states.union(state(c))
-      states = new_states
-    return len([s for s in states if s.match]) > 0
 
   def dot(self, dot): 
     for state in self.states:
