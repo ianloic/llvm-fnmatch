@@ -1,0 +1,167 @@
+#ifndef __charset_h__
+#define __charset_h__
+
+#include <string>
+#include <set>
+#include <algorithm>
+#include <vector>
+
+  class CharacterSet {
+    // CharacterSet is an immutable class representing a set of chars.
+    // It can be inclusive (listing all the included chars) or exclusive
+    // listing all of the chars not considered to be part of the set.
+    // It does not follow the patterns of std::set.
+    public:
+      // construct a CharacterSet containing all chars in @aChars
+      static CharacterSet Including(const std::string& aChars) {
+        return CharacterSet(true, aChars);
+      }
+
+      // construct a CharacterSet containing all chars except for those
+      // in @aChars
+      static CharacterSet Excluding(const std::string& aChars) {
+        return CharacterSet(false, aChars);
+      }
+
+      // construct a CharacterSet containing all chars in the range
+      // @aState to @aEnd, inclusive
+      static CharacterSet Range(char aStart, char aEnd) {
+        if (aEnd < aStart) {
+          char tmp = aEnd;
+          aEnd = aStart;
+          aStart = tmp;
+        }
+        std::string chars;
+        chars.reserve(aEnd-aStart);
+        for (char i=aStart; i<=aEnd; i++) {
+          chars.push_back(i);
+        }
+        return CharacterSet::Including(chars);
+      }
+
+      CharacterSet() 
+        : mInclusive(true), mChars() { }
+
+      // does this CharacterSet contain the character @aCharacter?
+      bool Contains(char aCharacter) const {
+        return mChars.find(aCharacter) != mChars.end();
+      }
+
+      // FIXME: implement label() ?
+
+      // equality operators
+      bool operator==(const CharacterSet& aOther) const {
+        return mInclusive == aOther.mInclusive && 
+          mChars == aOther.mChars;
+      }
+      bool operator!=(const CharacterSet& aOther) const {
+        return mInclusive != aOther.mInclusive ||
+          mChars != aOther.mChars;
+      }
+
+      // fixme implement hash? is it required? how do we do that?
+      
+      const CharacterSet Union(const CharacterSet& aOther) const {
+        if (mInclusive && aOther.mInclusive) {
+          std::set<char> chars;
+          std::set_union(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Including(chars);
+        } else if (!mInclusive && !aOther.mInclusive) {
+          std::set<char> chars;
+          set_intersection(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Excluding(chars);
+        } else if (mInclusive) {
+          std::set<char> chars;
+          set_difference(aOther.mChars.begin(), aOther.mChars.end(),
+              mChars.begin(), mChars.end(), 
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Excluding(chars);
+        } else {
+          std::set<char> chars;
+          set_difference(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Excluding(chars);
+        }
+      }
+
+      const CharacterSet Difference(const CharacterSet& aOther) const {
+        if (mInclusive && aOther.mInclusive) {
+          std::set<char> chars;
+          std::set_difference(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Including(chars);
+        } else if (!mInclusive && !aOther.mInclusive) {
+          std::set<char> chars;
+          set_difference(aOther.mChars.begin(), aOther.mChars.end(), 
+              mChars.begin(), mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Including(chars);
+        } else if (mInclusive) {
+          std::set<char> chars;
+          std::set_intersection(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Including(chars);
+        } else {
+          std::set<char> chars;
+          set_union(mChars.begin(), mChars.end(),
+              aOther.mChars.begin(), aOther.mChars.end(),
+              std::inserter(chars, chars.begin()));
+          return CharacterSet::Excluding(chars);
+        }
+      }
+
+      const CharacterSet Intersection(const CharacterSet& aOther) const {
+        return Difference(Difference(aOther));
+      }
+
+      bool All() const {
+        return !mInclusive && mChars.empty();
+      }
+
+      bool Empty() const {
+        return mInclusive && mChars.empty();
+      }
+
+      bool Disjoint(const CharacterSet& aOther) {
+        return Intersection(aOther).Empty();
+      }
+      bool Intersects(const CharacterSet& aOther) {
+        return !Disjoint(aOther);
+      }
+
+
+    private:
+      static CharacterSet Including(const std::set<char>& aChars) {
+        return CharacterSet(true, aChars);
+      }
+
+      static CharacterSet Excluding(const std::set<char>& aChars) {
+        return CharacterSet(false, aChars);
+      }
+
+      CharacterSet(bool aInclusive, const std::set<char>& aChars)
+          : mInclusive(aInclusive), mChars(aChars) { 
+      }
+
+      CharacterSet(bool aInclusive, const std::string& aChars)
+          : mInclusive(aInclusive) { 
+        // FIXME: is there a more efficient way to do this?
+        for (size_t i=0; i<aChars.size(); i++) {
+          mChars.insert(aChars[i]);
+        }
+      }
+
+      bool mInclusive;
+      std::set<char> mChars;
+
+  };
+
+
+#endif // __charset_h__
