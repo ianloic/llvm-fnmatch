@@ -12,6 +12,7 @@ from fsm import State, StateMachine
 class NFAState(State):
   pass
 
+
 class NFA(StateMachine):
   @classmethod
   def fnmatch(klass, s):
