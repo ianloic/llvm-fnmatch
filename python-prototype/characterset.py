@@ -19,11 +19,14 @@ class CharacterSet:
     else:
       return not (c in self.characters)
   def label(self):
+    # sort the list of characters
+    chars = list(self.characters)
+    chars.sort()
     if self.inclusive:
-      return `''.join(self.characters)`
+      return `''.join(chars)`
     else:
-      if not self.characters: return 'ANY'
-      else: return '!'+`''.join(self.characters)`
+      if not chars: return 'ANY'
+      else: return 'NOT '+`''.join(chars)`
   def __eq__(self, other):
     return self.inclusive == other.inclusive and \
         self.characters == other.characters
