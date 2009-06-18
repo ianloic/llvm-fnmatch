@@ -11,9 +11,9 @@ from fsm import State, StateMachine
 class DFAState(State):
   def __init__(self, nfa_states):
     State.__init__(self, 
-        name=','.join([nfa_state.name for nfa_state in nfa_states]))
+        name=','.join([nfa_state.name for nfa_state in nfa_states]),
+        match=any([state.match for state in nfa_states]))
     self.nfa_states = nfa_states
-    self.match = any([state.match for state in nfa_states])
   def __repr__(self):
     return 'DFAState%s(%s)' % (self.name, `self.nfa_states`)
 
