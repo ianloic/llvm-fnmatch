@@ -1,12 +1,14 @@
 # base classes for finite state machine
 
 class State:
-  __id = 0
-  def __init__(self, name, match=False):
+  __id = 1
+  def __init__(self, name=None, match=False):
     self.children = []
     self.match = match
-    self.name = name
     self.id = '%s_%d' % (self.__class__.__name__, State.__id)
+    self.name = name
+    if self.name == None: 
+      self.name = str(State.__id)
     State.__id = State.__id + 1
 
   def add(self, charset, state):

@@ -10,11 +10,6 @@ from characterset import CharacterSet, distinctCharacterSets
 from fsm import State, StateMachine
 
 class NFAState(State):
-  num = 1
-  def __init__(self):
-    State.__init__(self, name=str(NFAState.num))
-    NFAState.num = NFAState.num + 1
-
   def __repr__(self):
     return 'NFAState(%s, id=%d)' % (`self.name`, self.id)
 
