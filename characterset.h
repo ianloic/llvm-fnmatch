@@ -6,6 +6,8 @@
 #include <set>
 #include <algorithm>
 
+  class CharacterSets;
+
   class CharacterSet {
     // CharacterSet is an immutable class representing a set of chars.
     // It can be inclusive (listing all the included chars) or exclusive
@@ -135,10 +137,10 @@
         return mInclusive && mChars.empty();
       }
 
-      bool Disjoint(const CharacterSet& aOther) {
+      bool Disjoint(const CharacterSet& aOther) const {
         return Intersection(aOther).Empty();
       }
-      bool Intersects(const CharacterSet& aOther) {
+      bool Intersects(const CharacterSet& aOther) const {
         return !Disjoint(aOther);
       }
 
@@ -196,10 +198,66 @@
         }
       }
 
+
       bool mInclusive;
       std::set<char> mChars;
-
   };
 
+  // CharacterSets is a std::set of CharacterSet, yeah sets of sets, 
+  // it's confusing
+  class CharacterSets : public std::set<CharacterSet> {
+    public:
+      // the important function. return a set of CharacterSets with the same
+      // range as all of the inputs, but disjoint
+      CharacterSets Disjoin(const CharacterSet& aCharSet) const {
+        // if @this is empty, return a new set containing just @aCharSet
+        if (empty()) {
+          CharacterSets css;
+          css.insert(aCharSet);
+          return css;
+        }
+
+        CharacterSets result;
+
+        // for each charset X in @this, we want X-@aCharSet and the
+        // intersection of X and @aCharSet, 
+        // also
+        // for U is the union of all of the sets in @this, we want
+        // @aCharSet-U
+        CharacterSet U;
+        for (const_iterator X = begin(); X != end(); X++) {
+          // X - aCharset
+          result.insert((*X).Difference(aCharSet));
+          // X ∩ aCharset
+          result.insert((*X).Intersection(aCharSet));
+          // U ∪ X
+          U = U.Union((*X));
+        }
+        // aCharset - U
+        result.insert(aCharSet.Difference(U));
+
+        return result;
+      }
+      CharacterSets Distinct() const {
+        // identify a set of disjoint CharacterSet such that for each input
+        // CharacterSet X there is a set of output CharacterSet X' whose
+        // union is equal to X. we call this our partition
+        CharacterSets partition;
+        for (const_iterator iter = begin(); iter != end(); iter++) {
+          partition = partition.Disjoin(*iter);
+        }
+
+        // eliminate any empty CharacterSet from the partition
+        CharacterSets nonempty;
+        for (const_iterator iter = partition.begin();
+            iter != partition.end(); iter++) {
+          if (!(*iter).Empty()) {
+            nonempty.insert((*iter));
+          }
+        }
+
+        return nonempty;
+      }
+  };
 
 #endif // __charset_h__

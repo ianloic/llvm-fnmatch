@@ -1,5 +1,5 @@
-#ifndef __statemachine_h__
-#define __statemachine_h__
+#ifndef __nfa_h__
+#define __nfa_h__
 
 #include <string>
 #include <algorithm>
@@ -36,18 +36,20 @@ class NFA {
           mId = sId++;
         }
         friend class NFA;
+        friend class DFA;
     };
+
+    typedef std::set<State*> States;
 
     State* addState(const std::string& aName, bool aMatch) {
       State* state = new State(aName, aMatch);
-      mStates.push_back(state);
+      mStates.insert(state);
       return state;
     }
 
     ~NFA() {
       // delete all of the states associated with this machine
-      for(std::vector<State*>::iterator i = mStates.begin();
-          i < mStates.end(); i++) {
+      for(States::iterator i = mStates.begin(); i != mStates.end(); i++) {
         delete *i;
       }
     }
@@ -122,8 +124,8 @@ class NFA {
     void dot() {
       printf("digraph foo {\n\trankdir=LR\n");
 
-      for (size_t i=0; i<mStates.size(); i++) {
-        State* state = mStates[i];
+      for(States::iterator i = mStates.begin(); i != mStates.end(); i++) {
+        State* state = *i;
         printf("\tNFA%d [label=\"%d\"]\n", state->Id(), state->Id());
         for (State::map::iterator iter = state->mChildren.begin(); 
             iter != state->mChildren.end(); iter++) {
@@ -135,10 +137,73 @@ class NFA {
       printf("}\n");
     };
 
+    typedef std::map<CharacterSet,States> Arcs;
+    static Arcs DistinctArcs(const Arcs& aArcs) {
+      if (aArcs.size() < 2) {
+        return aArcs;
+      }
+
+      // find the distinct character sets we have
+      CharacterSets partition;
+      for (Arcs::const_iterator iter = aArcs.begin();
+          iter != aArcs.end(); iter++) {
+        partition.insert((*iter).first);
+      }
+      partition = partition.Distinct();
+
+      // reassociate those disjoint character sets with the right states
+      Arcs arcs;
+      for (CharacterSets::const_iterator iter = partition.begin();
+          iter != partition.end(); iter++) {
+        States states;
+        for (Arcs::const_iterator arcs_iter = aArcs.begin();
+            arcs_iter != aArcs.end(); arcs_iter++) {
+          if ((*arcs_iter).first.Intersects(*iter)) {
+            // copy the states from this arc onto the arc
+            const States& other_states = (*arcs_iter).second;
+            std::copy(other_states.begin(), other_states.end(),
+                std::inserter(states, states.begin()));
+          }
+        }
+        if (!states.empty()) {
+          arcs.insert(Arcs::value_type(*iter, states));
+        }
+      }
+
+      // if we have multiple charsets associated with the same set of states
+      // then lets merge those arcs
+      // to do this we need to reverse the arcs map...
+      typedef std::map<States,CharacterSet> AntiArcs;
+      AntiArcs charset_by_states;
+      for (Arcs::const_iterator iter=arcs.begin(); iter != arcs.end(); iter++) {
+        AntiArcs::iterator pos = charset_by_states.find((*iter).second);
+        if (pos == charset_by_states.end()) {
+          // haven't seen these states yet...
+          charset_by_states.insert(
+              AntiArcs::value_type((*iter).second, (*iter).first));
+        } else {
+          // seen these states before, let's update the CharacterSet to
+          // include the one we just found
+          charset_by_states.insert(pos,
+              AntiArcs::value_type(pos->first, 
+                (*pos).second.Union((*iter).first)));
+        }
+      }
+
+      // put the arcs back together
+      arcs.clear();
+      for (AntiArcs::const_iterator iter = charset_by_states.begin();
+          iter != charset_by_states.end(); iter++) {
+        arcs.insert(Arcs::value_type());
+      }
+
+      return arcs;
+    }
+
   private:
     State* mInitial;
-    std::vector<State*> mStates;
+    States mStates;
 };
 
 
-#endif // __statemachine_h__
+#endif // __nfa_h__
