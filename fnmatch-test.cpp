@@ -1,4 +1,6 @@
 #include "fnmatch.h"
+#include "characterset.h"
+#include "statemachine.h"
 
 #include <fnmatch.h>
 
@@ -37,6 +39,13 @@ static const char* test_paths[] = {
 };
 
 int main(int argc, char**argv) {
+  CharacterSet cs;
+  NFA* nfa = NFA::fnmatch("*.txt");
+
+  nfa->dot();
+
+  exit(0);
+
   if (argc == 3) {
     // test specific pattern and path
     test(argv[1], argv[2]);

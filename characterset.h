@@ -2,9 +2,9 @@
 #define __charset_h__
 
 #include <string>
+#include <sstream>
 #include <set>
 #include <algorithm>
-#include <vector>
 
   class CharacterSet {
     // CharacterSet is an immutable class representing a set of chars.
@@ -15,6 +15,13 @@
       // construct a CharacterSet containing all chars in @aChars
       static CharacterSet Including(const std::string& aChars) {
         return CharacterSet(true, aChars);
+      }
+
+      // construct a CharacterSet containing just the character @aChar
+      static CharacterSet Including(char aChar) {
+        std::set<char> chars;
+        chars.insert(aChar);
+        return CharacterSet::Including(chars);
       }
 
       // construct a CharacterSet containing all chars except for those
@@ -31,10 +38,9 @@
           aEnd = aStart;
           aStart = tmp;
         }
-        std::string chars;
-        chars.reserve(aEnd-aStart);
+        std::set<char> chars;
         for (char i=aStart; i<=aEnd; i++) {
-          chars.push_back(i);
+          chars.insert(i);
         }
         return CharacterSet::Including(chars);
       }
@@ -134,6 +140,38 @@
       }
       bool Intersects(const CharacterSet& aOther) {
         return !Disjoint(aOther);
+      }
+
+      // for std::less
+      bool operator<(const CharacterSet& aOther) const {
+        if (mInclusive != aOther.mInclusive) {
+          return mInclusive < aOther.mInclusive;
+        }
+        return mChars < aOther.mChars;
+      }
+
+      // a textual representation...
+      std::string Label() const {
+        if (mChars.empty()) {
+          if (mInclusive) {
+            return std::string("NONE");
+          } else {
+            return std::string("ALL");
+          }
+        } else {
+          std::stringstream ss;
+          if (!mInclusive) {
+            ss << "NOT: ";
+          }
+          ss << "\\\"";
+
+          for (std::set<char>::iterator iter = mChars.begin();
+              iter != mChars.end(); iter++) {
+            ss << *iter;
+          }
+          ss << "\\\"";
+          return ss.str();
+        }
       }
 
 
