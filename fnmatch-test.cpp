@@ -1,6 +1,6 @@
 #include "fnmatch.h"
 #include "characterset.h"
-#include "statemachine.h"
+#include "nfa.h"
 
 #include <fnmatch.h>
 
