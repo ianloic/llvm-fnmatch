@@ -1,6 +1,8 @@
 #include "fnmatch.h"
 #include "characterset.h"
+#include "fsm.h"
 #include "nfa.h"
+#include "dfa.h"
 
 #include <fnmatch.h>
 
@@ -41,8 +43,10 @@ static const char* test_paths[] = {
 int main(int argc, char**argv) {
   CharacterSet cs;
   NFA* nfa = NFA::fnmatch("*.txt");
+  DFA dfa;
 
-  nfa->dot();
+  //nfa->dot();
+  //nfa = NULL;
 
   exit(0);
 

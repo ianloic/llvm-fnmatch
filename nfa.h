@@ -4,70 +4,44 @@
 #include <string>
 #include <algorithm>
 #include <map>
-#include <vector>
 
 #include "characterset.h"
 
-class NFA {
+#include "fsm.h"
+
+class NFAState : public FSMState, 
+                 public std::multimap<CharacterSet, FSMState*> {
   public:
-    class State {
-      public:
-        void add(const CharacterSet& aCharacterSet, State* aState) {
-          mChildren.insert(State::pair(aCharacterSet, aState));
-        }
-        bool operator<(const State* other) const {
-          return this < other;
-        }
-        void SetMatch(bool aMatch) { mMatch = aMatch; }
-        bool GetMatch() const { return mMatch; }
-        int Id() { return mId; }
-      private:
-        bool mMatch;
-        std::string mName;
-        typedef std::pair<CharacterSet, State*> pair;
-        typedef std::multimap<CharacterSet, State*> map;
-        State::map mChildren;
-        int mId;
-        // FIXME: implement private operator= and copy constructor?
-      protected:
-        State(const std::string& aName, bool aMatch) 
-          : mMatch(aMatch), mName(aName) { 
-          static int sId = 0;
-          mId = sId++;
-        }
-        friend class NFA;
-        friend class DFA;
-    };
-
-    typedef std::set<State*> States;
-
-    State* addState(const std::string& aName, bool aMatch) {
-      State* state = new State(aName, aMatch);
-      mStates.insert(state);
-      return state;
-    }
-
-    ~NFA() {
-      // delete all of the states associated with this machine
-      for(States::iterator i = mStates.begin(); i != mStates.end(); i++) {
-        delete *i;
+    virtual void dot() {
+      printf("\tDFA%d [label=\"%d\"]\n", Id(), Id());
+      for (iterator iter = begin(); iter != end(); iter++) {
+        printf("\tDFA%d -> DFA%d [label=\"%s\"]\n", Id(), 
+            iter->second->Id(), iter->first.Label().c_str());
       }
     }
 
+    virtual void add(const CharacterSet& aCharacterSet, FSMState* aState) {
+      insert(FSMState::pair(aCharacterSet, aState));
+    }
+};
 
 
-
+class NFA : public FSM<NFAState> {
+  public:
     static NFA* fnmatch(std::string pattern) {
       NFA *nfa = new NFA();
 
-      nfa->mInitial = nfa->addState(std::string("INITIAL"), false);
+      nfa->mInitial = nfa->addState();
       
-      State* state = nfa->mInitial;
-      State* new_state = NULL;
+      NFAState* state = nfa->mInitial;
+      state->SetName(std::string("INITIAL"));
+
+      NFAState* new_state = NULL;
 
       size_t i=0;
       while(i < pattern.size()) {
-        new_state = nfa->addState(std::string(pattern, i, 1), false);
+        new_state = nfa->addState();
+        new_state->SetName(std::string(pattern, i, 1));
 
         if (pattern[i] == '?') {
           state->add(CharacterSet::Excluding(std::string()), new_state);
@@ -120,22 +94,6 @@ class NFA {
       state->SetMatch(true);
       return nfa;
     }
-
-    void dot() {
-      printf("digraph foo {\n\trankdir=LR\n");
-
-      for(States::iterator i = mStates.begin(); i != mStates.end(); i++) {
-        State* state = *i;
-        printf("\tNFA%d [label=\"%d\"]\n", state->Id(), state->Id());
-        for (State::map::iterator iter = state->mChildren.begin(); 
-            iter != state->mChildren.end(); iter++) {
-          printf("\tNFA%d -> NFA%d [label=\"%s\"]\n", state->Id(), 
-              (*iter).second->Id(), (*iter).first.Label().c_str());
-        }
-      }
-
-      printf("}\n");
-    };
 
     typedef std::map<CharacterSet,States> Arcs;
     static Arcs DistinctArcs(const Arcs& aArcs) {
@@ -199,10 +157,6 @@ class NFA {
 
       return arcs;
     }
-
-  private:
-    State* mInitial;
-    States mStates;
 };
 
 
