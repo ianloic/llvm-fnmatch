@@ -82,13 +82,6 @@ class CharacterSet:
   def intersects(self, other):
     return not self.disjoint(other)
 
-#  def distinct(self, other):
-#    '''return pair of tuples of sets. none of the returned sets intersect,
-#    the union of each pair is equal to self or other, respectively'''
-#    return ((self-other, self.intersection(other)), (other-self, self.intersection(other)))
-  def distinct(self, other):
-    return (self-other, other-self, self.intersection(other))
-
 
 def __disjoin(charsets, charset):
   '''@charsets is a set of disjoint charsets, @charset is a charset.
