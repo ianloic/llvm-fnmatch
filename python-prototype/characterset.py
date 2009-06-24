@@ -24,6 +24,8 @@ class CharacterSet:
       return c in self.characters
     else:
       return not (c in self.characters)
+
+  @property
   def label(self):
     # sort the list of characters
     chars = list(self.characters)

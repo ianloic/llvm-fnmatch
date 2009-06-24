@@ -2,31 +2,40 @@
 
 class State:
   __id = 1
-  def __init__(self, name=None, match=False):
+  def __init__(self, name=None, match=False, description=None):
     self.children = []
     self.match = match
     self.id = '%s_%d' % (self.__class__.__name__, State.__id)
     self.name = name
+    self.description = description
     if self.name == None: 
       self.name = str(State.__id)
     State.__id = State.__id + 1
 
+  @property
+  def label(self):
+    '''a descriptive label that's used for debugging and visualization'''
+    if self.name and self.description:
+      return '%s: %s' % (self.name, self.description)
+    elif self.name:
+      return self.name
+    elif self.description:
+      return self.description
+    else:
+      return ''
+
   def add(self, charset, state):
     self.children.append((charset, state))
-
-  def dot(self, dot):
-    if self.match:
-      dot.node(self.id, self.name, peripheries=2)
-    else:
-      dot.node(self.id, self.name)
-    for charset, child in self.children:
-      dot.arc(self.id, child.id, charset.label())
 
   def __call__(self, c):
     return [node for charset, node in self.children if c in charset]
 
   def __repr__(self):
     return '%s(%s)' % (self.__class__.__name__, self.name)
+
+  def __iter__(self):
+    '''return an iterator for the outbound arcs'''
+    return iter(self.children)
 
 
 class StateMachine:
@@ -35,10 +44,6 @@ class StateMachine:
     self.states = states
     if self.initial not in self.states:
       self.states.append(self.initial)
-
-  def dot(self, dot): 
-    for state in self.states:
-      state.dot(dot)
 
   def __call__(self, s):
     states = set([self.initial])
@@ -50,5 +55,9 @@ class StateMachine:
         new_states = new_states.union(state(c))
       states = new_states
     return len([s for s in states if s.match]) > 0
+
+  def __iter__(self):
+    '''return an iterator for all of the states in the machine'''
+    return iter(self.states)
 
 

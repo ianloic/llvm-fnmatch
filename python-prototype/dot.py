@@ -5,6 +5,16 @@ class Dot:
     self.nodes = []
     self.arcs = []
 
+  def add(self, fsm):
+    '''add a finite state machine to this diagram'''
+    for state in fsm:
+      if state.match:
+        self.node(state.id, state.label, peripheries=2)
+      else:
+        self.node(state.id, state.label)
+      for charset, child in state:
+        self.arc(state.id, child.id, charset.label)
+
   def node(self, name, label=None, peripheries=1):
     self.nodes.append((name, label, peripheries))
 

@@ -31,11 +31,10 @@ if __name__ == '__main__':
   #print '-' * 40
   #pprint(dfa.states)
 
-#  dot = Dot('hobo')
-#  nfa.dot(dot)
-#  dfa.dot(dot)
-#  dot.show()
+  dot = Dot('hobo')
+  dot.add(nfa)
+  dot.add(dfa)
+  dot.show()
 
   from compiler import compile
   compile(dfa)
-

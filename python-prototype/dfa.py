@@ -8,10 +8,19 @@ from pprint import pprint
 from characterset import CharacterSet, distinctCharacterSets
 from fsm import State, StateMachine
 
+def name_generator():
+  from string import uppercase
+  from itertools import chain
+  for n in chain([''], name_generator()):
+    for c in uppercase:
+      yield n+c
+namegen = name_generator()
+
 class DFAState(State):
   def __init__(self, nfa_states):
     State.__init__(self, 
-        name=','.join([nfa_state.name for nfa_state in nfa_states]),
+        name=namegen.next(),
+        description=','.join([nfa_state.name for nfa_state in nfa_states]),
         match=any([state.match for state in nfa_states]))
 
 

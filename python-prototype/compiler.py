@@ -5,7 +5,6 @@ from llvm.core import *
 from llvm.ee import *
 from llvm.passes import *
 
-
 def compile(dfa, name='fnmatch'):
   '''compile a deterministic finite state automaton into native code via
   llvm'''
@@ -43,15 +42,13 @@ def compile(dfa, name='fnmatch'):
   Builder.new(return_false).ret(Constant.int(bool_type, 0))
 
   # for each of the states in the NFA we create a BasicBlock
-  state_blocks = {}
   for state in dfa.states:
-    # create a block for this state
-    state_blocks[state] = function.append_basic_block('state_block')
+    state.block = function.append_basic_block('state_'+state.name)
 
   # for each of the states in the NFA we add some simple code to the basic
   # blocks
-  for state, block in state_blocks.items():
-    bb = Builder.new(block)
+  for state in dfa.states:
+    bb = Builder.new(state.block)
     # load the path pointer
     path = bb.load(path_ptr, 'path')
     # load the character at the current point in the path
@@ -59,12 +56,11 @@ def compile(dfa, name='fnmatch'):
 
     # we need to work out what goes in our big switch statement
     # find the exclusive character set (if one exists)
-    exclusive = [(charset, state) for (charset, state) in state.children
-        if not charset.inclusive]
+    exclusive = [(c, s) for (c, s) in state if not c.inclusive]
     assert len(exclusive) <= 1 # zero or one only I think...
     if len(exclusive): 
       excluded_chars = exclusive[0][0].characters
-      else_block = state_blocks[exclusive[0][1]]
+      else_block = exclusive[0][1].block
     else: 
       excluded_chars = set()
       else_block = return_false
@@ -72,11 +68,11 @@ def compile(dfa, name='fnmatch'):
     # build a big-ass switch statement
     switch = bb.switch(path_char, else_block)
 
-    for charset, block in state.children:
+    for charset, child in state:
       if not charset.inclusive: continue # already handled
       # add a case for each character
       for c in charset.characters:
-        switch.add_case(Constant.int(char_type, ord(c)), state_blocks[block])
+        switch.add_case(Constant.int(char_type, ord(c)), child.block)
       # remove the handled chars from the excluded chars
       excluded_chars = excluded_chars - charset.characters
     # if there are any excluded characters left over, return false for them
@@ -92,10 +88,8 @@ def compile(dfa, name='fnmatch'):
       # end of string elsewhere -> return false
       switch.add_case(Constant.int(char_type, 0), return_false)
 
-    #print `state.children`
-
   # branch from the entry to the initial state
-  entry_bb.branch(state_blocks[dfa.initial])
+  entry_bb.branch(dfa.initial.block)
 
 
   print str(module)
