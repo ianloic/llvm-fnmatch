@@ -36,5 +36,7 @@ if __name__ == '__main__':
   dot.add(dfa)
   dot.show()
 
-  from compiler import compile
-  compile(dfa)
+  from compiler import Compiled
+  compiled = Compiled(dfa)
+
+  print compiled

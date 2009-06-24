@@ -5,91 +5,93 @@ from llvm.core import *
 from llvm.ee import *
 from llvm.passes import *
 
-def compile(dfa, name='fnmatch'):
-  '''compile a deterministic finite state automaton into native code via
-  llvm'''
 
-  # create the module
-  module = Module.new('fnmatch_compile')
+class Compiled:
+  def __init__(self, dfa, name='fnmatch'):
+    '''compile a deterministic finite state automaton into native code via
+    llvm'''
 
-  # character type
-  char_type = Type.int(8)
-  # string type (char*)
-  string_type = Type.pointer(char_type)
-  # boolean type
-  bool_type = Type.int(1)
+    # create the module
+    self.module = Module.new('fnmatch_compile')
 
-  # create the function i1 @fnmatch(i8*)
-  function = module.add_function(
-      Type.function(bool_type, [string_type]), name);
-  function.args[0].name = 'path'
+    # character type
+    char_type = Type.int(8)
+    # string type (char*)
+    string_type = Type.pointer(char_type)
+    # boolean type
+    bool_type = Type.int(1)
 
-  # create an entry block for the function
-  function_entry = function.append_basic_block('function_entry')
-  entry_bb = Builder.new(function_entry)
+    # create the function i1 @fnmatch(i8*)
+    self.function = self.module.add_function(
+        Type.function(bool_type, [string_type]), name);
+    self.function.args[0].name = 'path'
 
-  # create a local variable to hold the character pointer
-  path_ptr = entry_bb.alloca(string_type, 'path_ptr')
-  # store the %path argument
-  entry_bb.store(function.args[0], path_ptr)
+    # create an entry block for the function
+    function_entry = self.function.append_basic_block('function_entry')
+    entry_bb = Builder.new(function_entry)
 
-  # create a block that returns true
-  return_true = function.append_basic_block('return_true')
-  Builder.new(return_true).ret(Constant.int(bool_type, 1))
+    # create a local variable to hold the character pointer
+    path_ptr = entry_bb.alloca(string_type, 'path_ptr')
+    # store the %path argument
+    entry_bb.store(self.function.args[0], path_ptr)
 
-  # create a block that returns false
-  return_false = function.append_basic_block('return_false')
-  Builder.new(return_false).ret(Constant.int(bool_type, 0))
+    # create a block that returns true
+    return_true = self.function.append_basic_block('return_true')
+    Builder.new(return_true).ret(Constant.int(bool_type, 1))
 
-  # for each of the states in the NFA we create a BasicBlock
-  for state in dfa.states:
-    state.block = function.append_basic_block('state_'+state.name)
+    # create a block that returns false
+    return_false = self.function.append_basic_block('return_false')
+    Builder.new(return_false).ret(Constant.int(bool_type, 0))
 
-  # for each of the states in the NFA we add some simple code to the basic
-  # blocks
-  for state in dfa.states:
-    bb = Builder.new(state.block)
-    # load the path pointer
-    path = bb.load(path_ptr, 'path')
-    # load the character at the current point in the path
-    path_char = bb.load(path, 'path_char')
+    # for each of the states in the NFA we create a BasicBlock
+    for state in dfa.states:
+      state.block = self.function.append_basic_block('state_'+state.name)
 
-    # we need to work out what goes in our big switch statement
-    # find the exclusive character set (if one exists)
-    exclusive = [(c, s) for (c, s) in state if not c.inclusive]
-    assert len(exclusive) <= 1 # zero or one only I think...
-    if len(exclusive): 
-      excluded_chars = exclusive[0][0].characters
-      else_block = exclusive[0][1].block
-    else: 
-      excluded_chars = set()
-      else_block = return_false
+    # for each of the states in the NFA we add some simple code to the basic
+    # blocks
+    for state in dfa.states:
+      bb = Builder.new(state.block)
+      # load the path pointer
+      path = bb.load(path_ptr, 'path')
+      # load the character at the current point in the path
+      path_char = bb.load(path, 'path_char')
 
-    # build a big-ass switch statement
-    switch = bb.switch(path_char, else_block)
+      # we need to work out what goes in our big switch statement
+      # find the exclusive character set (if one exists)
+      exclusive = [(c, s) for (c, s) in state if not c.inclusive]
+      assert len(exclusive) <= 1 # zero or one only I think...
+      if len(exclusive): 
+        excluded_chars = exclusive[0][0].characters
+        else_block = exclusive[0][1].block
+      else: 
+        excluded_chars = set()
+        else_block = return_false
 
-    for charset, child in state:
-      if not charset.inclusive: continue # already handled
-      # add a case for each character
-      for c in charset.characters:
-        switch.add_case(Constant.int(char_type, ord(c)), child.block)
-      # remove the handled chars from the excluded chars
-      excluded_chars = excluded_chars - charset.characters
-    # if there are any excluded characters left over, return false for them
-    if excluded_chars:
-      for c in excluded_chars:
-        switch.add_case(Constant.int(char_type, ord(c)), return_false)
+      # build a big-ass switch statement
+      switch = bb.switch(path_char, else_block)
 
-    # handle end of string '\0'
-    if state.match:
-      # end of string in a match state -> return true
-      switch.add_case(Constant.int(char_type, 0), return_true)
-    else:
-      # end of string elsewhere -> return false
-      switch.add_case(Constant.int(char_type, 0), return_false)
+      for charset, child in state:
+        if not charset.inclusive: continue # already handled
+        # add a case for each character
+        for c in charset.characters:
+          switch.add_case(Constant.int(char_type, ord(c)), child.block)
+        # remove the handled chars from the excluded chars
+        excluded_chars = excluded_chars - charset.characters
+      # if there are any excluded characters left over, return false for them
+      if excluded_chars:
+        for c in excluded_chars:
+          switch.add_case(Constant.int(char_type, ord(c)), return_false)
 
-  # branch from the entry to the initial state
-  entry_bb.branch(dfa.initial.block)
+      # handle end of string '\0'
+      if state.match:
+        # end of string in a match state -> return true
+        switch.add_case(Constant.int(char_type, 0), return_true)
+      else:
+        # end of string elsewhere -> return false
+        switch.add_case(Constant.int(char_type, 0), return_false)
 
+    # branch from the entry to the initial state
+    entry_bb.branch(dfa.initial.block)
 
-  print str(module)
+  def __str__(self):
+    return str(self.module)
