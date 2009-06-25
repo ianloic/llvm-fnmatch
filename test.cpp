@@ -14,67 +14,47 @@
 
 using namespace llvm;
 
-class Thing {
+class Test {
   public:
     ExecutionEngine* executionEngine;
     Module* module;
     ExistingModuleProvider* mp;
     FunctionPassManager* fpm;
 
-    Thing() {
-      module = new Module("test");
+    Test(const char* name) {
+      module = new Module(name);
       executionEngine = ExecutionEngine::create(module);
       mp = new ExistingModuleProvider(module);
       fpm = new FunctionPassManager(mp);
     }
 
     void compile();
-
-    void dump() {
-      printf("module=%p\n", module);
-      module->dump();
-    }
 };
 
 void
-Thing::compile() {
+Test::compile() {
   // create a function of type i1(i32)
   std::vector<const Type*> args_type;
   args_type.push_back(IntegerType::get(32));
   FunctionType *func_type = FunctionType::get(IntegerType::get(1), args_type, false);
   Function* func = Function::Create(func_type, Function::ExternalLinkage, std::string("test"), module);
 
-  // get the argument 
-  Function::arg_iterator args = func->arg_begin();
-  Value* arg = args++;
-  arg->setName("arg");
-
-  // create an entry point for the function
+  // that returns false
   BasicBlock* entry = BasicBlock::Create("entry", func);
-  // returns false
   ReturnInst::Create(ConstantInt::get(IntegerType::get(1), 0), entry);
 
   // optimize
-  
-  // Set up the optimizer pipeline.  Start with registering info about how the
-  // target lays out data structures.
   fpm->add(new TargetData(*executionEngine->getTargetData()));
-  // Do simple "peephole" optimizations and bit-twiddling optzns.
-  fpm->add(createInstructionCombiningPass());
-  // Reassociate expressions.
-  fpm->add(createReassociatePass());
-  // Eliminate Common SubExpressions.
-  fpm->add(createGVNPass());
-  // Simplify the control flow graph (deleting unreachable blocks, etc).
   fpm->add(createCFGSimplificationPass());
   fpm->run(*func);
-  this->dump();
 }
 
 int main(int argc, char**argv) {
-  Thing* thing1 = new Thing();
-  thing1->compile();
-  //thing1->dump();
+  Test* test1 = new Test("test1");
+  test1->compile();
+
+  Test* test2 = new Test("test2");
+  test2->compile();
 
   return 0;
 }
