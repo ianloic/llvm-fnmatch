@@ -38,6 +38,7 @@ if __name__ == '__main__':
 
   from compiler import Compiled
   compiled = Compiled(dfa, debug=False)
+  compiled.optimize()
 
   result = compiled('test.cpp')
   print 'result=%s' % `result`

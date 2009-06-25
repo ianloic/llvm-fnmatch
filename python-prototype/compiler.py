@@ -7,7 +7,7 @@ from llvm.passes import *
 
 
 class Compiled:
-  def __init__(self, dfa, name='fnmatch', debug=True):
+  def __init__(self, dfa, debug=True):
     '''compile a deterministic finite state automaton into native code via
     llvm'''
 
@@ -31,7 +31,7 @@ class Compiled:
 
     # create the function i1 @fnmatch(i8*)
     self.function = self.module.add_function(
-        Type.function(bool_type, [string_type]), name);
+        Type.function(bool_type, [string_type]), 'fnmatch');
     self.function.args[0].name = 'path'
 
     # create an entry block for the function
@@ -118,3 +118,13 @@ class Compiled:
     path_value = GenericValue.string(Type.pointer(Type.int(8)), path)
     retval = self.ee.run_function(self.function, [path_value])
     return (retval.as_int() != 0)
+
+  def optimize(self, level=2):
+    '''run the bitcode though the LLVM opt program'''
+    from subprocess import Popen, PIPE
+    opt = Popen(('opt', '-O%d' % level), stdin=PIPE, stdout=PIPE)
+    self.module.to_bitcode(opt.stdin)
+    opt.stdin.close()
+    self.module = Module.from_bitcode(opt.stdout)
+    self.function = self.module.get_function_named('fnmatch')
+
