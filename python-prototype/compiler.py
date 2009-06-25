@@ -8,7 +8,7 @@ from llvm.passes import *
 
 class Compiled:
   ee = None
-  def __init__(self, dfa, debug=True):
+  def __init__(self, dfa, debug=False):
     '''compile a deterministic finite state automaton into native code via
     llvm'''
 
