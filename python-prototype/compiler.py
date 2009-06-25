@@ -7,6 +7,7 @@ from llvm.passes import *
 
 
 class Compiled:
+  ee = None
   def __init__(self, dfa, debug=True):
     '''compile a deterministic finite state automaton into native code via
     llvm'''
@@ -19,8 +20,8 @@ class Compiled:
       putchar = self.module.get_function_named('putchar')
     else:
       self.module = Module.new('fnmatch_compile')
-    self.mp = ModuleProvider.new(self.module)
-    self.ee = ExecutionEngine.new(self.mp)
+    if not Compiled.ee:
+      Compiled.ee = ExecutionEngine.new(ModuleProvider.new(self.module))
 
     # character type
     char_type = Type.int(8)
@@ -116,7 +117,7 @@ class Compiled:
 
   def __call__(self, path):
     path_value = GenericValue.string(Type.pointer(Type.int(8)), path)
-    retval = self.ee.run_function(self.function, [path_value])
+    retval = Compiled.ee.run_function(self.function, [path_value])
     return (retval.as_int() != 0)
 
   def optimize(self, level=2):

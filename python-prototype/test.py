@@ -45,3 +45,7 @@ if __name__ == '__main__':
 
   result = compiled('test.c')
   print 'result=%s' % `result`
+
+  compiled2 = Compiled(DFA(nfa.fnmatch('hello*')), debug=False)
+  compiled2('hello world')
+  compiled2('sucker hello')
