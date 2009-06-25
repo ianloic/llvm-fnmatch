@@ -71,7 +71,8 @@ class Compiled:
       bb.store(path, path_ptr)
 
       if debug:
-        bb.call(putchar, [Constant.int(Type.int(32), ord(state.name))])
+        for c in state.name:
+          bb.call(putchar, [Constant.int(Type.int(32), ord(c))])
         bb.call(putchar, [bb.zext(path_char, Type.int(32))])
         bb.call(putchar, [Constant.int(Type.int(32), ord('\n'))])
 
