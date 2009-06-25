@@ -34,9 +34,13 @@ if __name__ == '__main__':
   dot = Dot('hobo')
   dot.add(nfa)
   dot.add(dfa)
-  dot.show()
+  #dot.show()
 
   from compiler import Compiled
-  compiled = Compiled(dfa)
+  compiled = Compiled(dfa, debug=False)
 
-  print compiled
+  result = compiled('test.cpp')
+  print 'result=%s' % `result`
+
+  result = compiled('test.c')
+  print 'result=%s' % `result`

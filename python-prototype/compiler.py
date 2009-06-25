@@ -7,12 +7,20 @@ from llvm.passes import *
 
 
 class Compiled:
-  def __init__(self, dfa, name='fnmatch'):
+  def __init__(self, dfa, name='fnmatch', debug=True):
     '''compile a deterministic finite state automaton into native code via
     llvm'''
 
     # create the module
-    self.module = Module.new('fnmatch_compile')
+    if debug:
+      from StringIO import StringIO
+      self.module = Module.from_assembly(StringIO(
+        '''declare i32 @putchar(i32) nounwind'''))
+      putchar = self.module.get_function_named('putchar')
+    else:
+      self.module = Module.new('fnmatch_compile')
+    self.mp = ModuleProvider.new(self.module)
+    self.ee = ExecutionEngine.new(self.mp)
 
     # character type
     char_type = Type.int(8)
@@ -55,6 +63,16 @@ class Compiled:
       path = bb.load(path_ptr, 'path')
       # load the character at the current point in the path
       path_char = bb.load(path, 'path_char')
+      # increment the path pointer
+      path_int = bb.ptrtoint(path, Type.int(32))
+      path_int = bb.add(path_int, Constant.int(Type.int(32), 1))
+      path = bb.inttoptr(path_int, string_type)
+      bb.store(path, path_ptr)
+
+      if debug:
+        bb.call(putchar, [Constant.int(Type.int(32), ord(state.name))])
+        bb.call(putchar, [bb.zext(path_char, Type.int(32))])
+        bb.call(putchar, [Constant.int(Type.int(32), ord('\n'))])
 
       # we need to work out what goes in our big switch statement
       # find the exclusive character set (if one exists)
@@ -95,3 +113,8 @@ class Compiled:
 
   def __str__(self):
     return str(self.module)
+
+  def __call__(self, path):
+    path_value = GenericValue.string(Type.pointer(Type.int(8)), path)
+    retval = self.ee.run_function(self.function, [path_value])
+    return (retval.as_int() != 0)
