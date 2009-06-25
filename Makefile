@@ -2,7 +2,7 @@
 # use gnu make and gcc. duh.
 
 CPPFLAGS = $(shell llvm-config --cxxflags) -Wall -Werror -g -O0
-LDFLAGS = $(shell llvm-config --ldflags --libs core jit native)
+LDFLAGS = $(shell llvm-config --ldflags --libs all)
 LD = $(CXX)
 
 BASE_OBJS = fnmatch-compiler.o fnmatch-parse.o
