@@ -3,7 +3,6 @@
 # character classes are functions f(c) -> True/False
 # states are functions f(c) -> set of states
 
-from pprint import pprint
 
 from dfa import DFA
 from nfa import NFA
@@ -28,8 +27,6 @@ if __name__ == '__main__':
   #nfa = NFA.fnmatch('[a-zA-Z1-90]*.cpp')
   #nfa = NFA.fnmatch('a*bc')
   dfa = DFA(nfa)
-  #print '-' * 40
-  #pprint(dfa.states)
 
   dot = Dot('hobo')
   dot.add(nfa)

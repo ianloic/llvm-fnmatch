@@ -1,5 +1,3 @@
-from pprint import pprint # for debugging funs
-
 class CharacterSet:
   def __init__(self, inclusive, characters):
     self.inclusive = bool(inclusive)
@@ -109,7 +107,6 @@ def distinctCharacterSets(orig_charsets):
   whose union is equal to the union of the original charsets'''
   # original_charsets contains the set of original charsets
   charsets = set(orig_charsets)
-  #pprint(charsets)
 
   partition = reduce(__disjoin, charsets, set())
 
@@ -128,8 +125,6 @@ def distinctCharacterSets(orig_charsets):
   partition = set([charset for charset in partition if not charset.empty()])
 
   #print 'partitioned %s into %s' % (`orig_charsets`, `partition`)
-
-  #pprint(partition)
 
   # check that our result matches our contract
   # make sure that none of our character sets intersect

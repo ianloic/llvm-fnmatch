@@ -3,8 +3,6 @@
 # character classes are functions f(c) -> True/False
 # states are functions f(c) -> set of states
 
-from pprint import pprint
-
 from characterset import CharacterSet, distinctCharacterSets
 from fsm import State, StateMachine
 

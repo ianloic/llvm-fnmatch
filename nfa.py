@@ -3,7 +3,6 @@
 # character classes are functions f(c) -> True/False
 # states are functions f(c) -> set of states
 
-from pprint import pprint
 from StringIO import StringIO
 
 from characterset import CharacterSet, distinctCharacterSets
