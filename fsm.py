@@ -1,6 +1,7 @@
-# base classes for finite state machine
+# base classes for finite state machines
 
 class State:
+  '''State base class'''
   __id = 1
   def __init__(self, name=None, match=False, description=None):
     self.children = []
@@ -39,6 +40,7 @@ class State:
 
 
 class StateMachine:
+  '''State machine base class'''
   def __init__(self, initial, states=[]):
     self.initial = initial
     self.states = states
