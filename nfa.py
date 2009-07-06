@@ -31,6 +31,12 @@ class NFA(StateMachine):
         # multi-character wildcard
         state.add(CharacterSet.excluding(''), new_state)
         new_state.add(CharacterSet.excluding(''), new_state)
+      elif c == '\\':
+        # treat the next character literally
+        c = sio.read(1)
+        if c == '':
+          raise 'escape at end of string'
+        state.add(CharacterSet.including(c), new_state)
       elif c == '[':
         # bracket expression
         c = sio.read(1)
