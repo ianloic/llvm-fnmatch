@@ -1,7 +1,8 @@
 
 class Dot:
-  def __init__(self, name):
+  def __init__(self, name, label=None):
     self.name = name
+    self.label = label
     self.nodes = []
     self.arcs = []
 
@@ -23,6 +24,9 @@ class Dot:
 
   def __str__(self):
     s = 'digraph %s {\n\trankdir=LR\n' % self.name
+    
+    if self.label != None:
+      s = s + ('\tlabel="%s"\n' % self.label)
 
     for name, label, peripheries in self.nodes:
       if label:
@@ -48,3 +52,34 @@ class Dot:
     pipe.close()
     system('gnome-open %s' % filename)
 
+
+if __name__ == '__main__':
+  from optparse import OptionParser
+  op = OptionParser()
+  op.add_option('--nfa', dest='nfa', help='graph the NFA form', 
+      action='store_true', default=False)
+  op.add_option('--dfa', dest='dfa', help='graph the DFA form', 
+      action='store_true', default=False)
+  op.add_option('--show', dest='show', help='show the graph on the screen',
+      action='store_true', default=False)
+      
+  (options, args) = op.parse_args()
+  if len(args) < 1:
+    print 'You must supply at least one fnmatch expression.'
+  elif not options.nfa and not options.dfa:
+    print 'You must request at least one of --nfa or --dfa'
+  else:
+    from nfa import NFA
+    from dfa import DFA
+    for pattern in args:
+      dot = Dot('temp', pattern)
+      nfa = NFA.fnmatch(pattern)
+      if options.dfa:
+        dfa = DFA(nfa)
+        dot.add(dfa)
+      if options.nfa:
+        dot.add(nfa)
+      if options.show:
+        dot.show()
+      else:
+        print str(dot)
