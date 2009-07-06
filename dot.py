@@ -10,17 +10,11 @@ class Dot:
     '''add a finite state machine to this diagram'''
     for state in fsm:
       if state.match:
-        self.node(state.id, state, peripheries=2)
+        self.nodes.append((state.id, state, 2))
       else:
-        self.node(state.id, state)
+        self.nodes.append((state.id, state, 1))
       for charset, child in state:
-        self.arc(state.id, child.id, charset)
-
-  def node(self, name, label=None, peripheries=1):
-    self.nodes.append((name, label, peripheries))
-
-  def arc(self, node1, node2, label=None):
-    self.arcs.append((node1, node2, label))
+        self.arcs.append((state.id, child.id, charset))
 
   def __str__(self):
     s = 'digraph %s {\n\trankdir=LR\n' % self.name
