@@ -13,8 +13,8 @@ class State:
       self.name = str(State.__id)
     State.__id = State.__id + 1
 
-  @property
-  def label(self):
+
+  def __str__(self):
     '''a descriptive label that's used for debugging and visualization'''
     if self.name and self.description:
       return '%s: %s' % (self.name, self.description)

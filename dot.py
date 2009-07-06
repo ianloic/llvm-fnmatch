@@ -9,11 +9,11 @@ class Dot:
     '''add a finite state machine to this diagram'''
     for state in fsm:
       if state.match:
-        self.node(state.id, state.label, peripheries=2)
+        self.node(state.id, state, peripheries=2)
       else:
-        self.node(state.id, state.label)
+        self.node(state.id, state)
       for charset, child in state:
-        self.arc(state.id, child.id, charset.label)
+        self.arc(state.id, child.id, charset)
 
   def node(self, name, label=None, peripheries=1):
     self.nodes.append((name, label, peripheries))

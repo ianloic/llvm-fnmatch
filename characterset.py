@@ -38,8 +38,7 @@ class CharacterSet:
     else:
       return not (c in self.characters)
 
-  @property
-  def label(self):
+  def __str__(self):
     '''when displaying this set to the user, how should we present it?'''
     # sort the list of characters
     chars = list(self.characters)
