@@ -6,7 +6,7 @@ class CharacterSet:
     '''call CharacterSet.including(), CharacterSet.excluding() or
     CharacterSet.range() instead of this'''
     self.inclusive = bool(inclusive)
-    self.characters = set(characters)
+    self.characters = frozenset(characters)
 
   @classmethod
   def including(klass, characters):
@@ -119,17 +119,17 @@ def __disjoin(charsets, charset):
   '''@charsets is a set of disjoint charsets, @charset is a charset.
   return a set of charsets with the same range as all inputs, but all disjoint'''
   # prove preconditions
-  assert isinstance(charsets, set)
+  assert isinstance(charsets, (set, frozenset))
   for cs in charsets:
     assert isinstance(cs, CharacterSet)
   assert isinstance(charset, CharacterSet)
 
-  if len(charsets) == 0: return set([charset])
+  if len(charsets) == 0: return frozenset([charset])
 
-  result = set([cs-charset for cs in charsets])
-  result = result.union(set([cs.intersection(charset) for cs in charsets]))
+  result = frozenset([cs-charset for cs in charsets])
+  result = result.union(frozenset([cs.intersection(charset) for cs in charsets]))
   charsets_union = reduce(lambda a,b:a.union(b), charsets)
-  result = result.union(set([charset-charsets_union]))
+  result = result.union(frozenset([charset-charsets_union]))
   return result
 
 
@@ -143,13 +143,13 @@ def distinctCharacterSets(orig_charsets):
   '''
   
   # original_charsets contains the set of original charsets
-  charsets = set(orig_charsets)
+  charsets = frozenset(orig_charsets)
 
   # find disjoint sets
-  partition = reduce(__disjoin, charsets, set())
+  partition = reduce(__disjoin, charsets, frozenset())
 
   # filter the empty set out of the partition
-  partition = set([charset for charset in partition if not charset.empty()])
+  partition = frozenset([charset for charset in partition if not charset.empty()])
 
   # check that our result matches our contract
   # make sure that none of our character sets intersect
