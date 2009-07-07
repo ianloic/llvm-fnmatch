@@ -69,8 +69,3 @@ class NFA(StateMachine):
   def __init__(self, initial, states=[]):
     StateMachine.__init__(self, initial, states)
 
-  def dot(self, dot): 
-    for state in self.states:
-      state.dot(dot)
-
-
