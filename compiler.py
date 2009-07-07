@@ -123,10 +123,42 @@ class Compiled:
 
   def optimize(self, level=2):
     '''run the bitcode though the LLVM opt program'''
+    # FIXME: really, we should call the llvm-py APIs, but this is easier
     from subprocess import Popen, PIPE
     opt = Popen(('opt', '-O%d' % level), stdin=PIPE, stdout=PIPE)
     self.module.to_bitcode(opt.stdin)
     opt.stdin.close()
     self.module = Module.from_bitcode(opt.stdout)
     self.function = self.module.get_function_named('fnmatch')
+
+
+if __name__ == '__main__':
+  from optparse import OptionParser
+  op = OptionParser(usage='usage: %prog [options] pattern')
+  op.add_option('--dont-optimize', dest='optimize', 
+      help='optimize the generated code', 
+      action='store_false', default=True)
+  op.add_option('--native', dest='native',
+      help='generate native assembly rather than LLVM assembly',
+      action='store_true', default=False)
+      
+  (options, args) = op.parse_args()
+  if len(args) != 1:
+    op.print_help()
+  else:
+    from nfa import NFA
+    from dfa import DFA
+    
+    dfa = DFA(NFA.fnmatch(args[0]))
+    compiled = Compiled(dfa)
+    if options.optimize:
+      compiled.optimize()
+    if options.native:
+      from subprocess import Popen, PIPE
+      asm = Popen('llvm-as | llc', shell=True, stdin=PIPE, stdout=PIPE)
+      asm.stdin.write(str(compiled))
+      asm.stdin.close()
+      print asm.stdout.read()
+    else:
+      print compiled
 
