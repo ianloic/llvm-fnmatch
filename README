@@ -7,6 +7,12 @@ This code operates on 8-bit octets rather than unicode characters. It only
 understands the following expressions:
  - '?' matches any single character
  - '*' matches any zero or more characters
- - '[xyz]' matches any of 'x', 'y', or 'z' (ranges are not supported)
+ - '[xyz]' matches any of 'x', 'y', or 'z'
+ - '[!xyz]' matches anything except 'x', 'y', or 'z'
+ - '[x-z]' matches anything in the range 'x' to 'z' inclusive
+ - bracket expressions can be combined
  - '\x' matches the character 'x' literally (ie: escaping)
  - any other character matches literally
+ 
+The implementation is in Python using llvm-py, including some additions that I
+have made. I keep my llvm-py tree at:
