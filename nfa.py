@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-# character classes are functions f(c) -> True/False
-# states are functions f(c) -> set of states
-
-from StringIO import StringIO
-
 from characterset import CharacterSet, distinctCharacterSets
 from fsm import State, StateMachine
 
@@ -15,13 +10,14 @@ class NFAState(State):
 class NFA(StateMachine):
   @classmethod
   def fnmatch(klass, s):
+    '''create an NFA state machine representing the fnmatch pattern @s'''
     nfa = NFA(NFAState())
     state = nfa.initial
     new_state = None
-    sio = StringIO(s)
+    chars = list(s)
     while True:
-      c = sio.read(1)
-      if c == '': break # end-of-string
+      if len(chars) == 0: break # end-of-string
+      c = chars.pop(0)
       new_state = NFAState()
       nfa.states.append(new_state)
       if c == '?':
@@ -33,32 +29,33 @@ class NFA(StateMachine):
         new_state.add(CharacterSet.excluding(''), new_state)
       elif c == '\\':
         # treat the next character literally
-        c = sio.read(1)
-        if c == '':
+        if len(chars) == 0:
           raise 'escape at end of string'
+        c = chars.pop(0)
         state.add(CharacterSet.including(c), new_state)
       elif c == '[':
         # bracket expression
-        c = sio.read(1)
-        if c == '!': # inverted
-          inverted = True
-          c = sio.read(1)
-        else:
-          inverted = False
-        charset = CharacterSet.including('')
-        last_char = None
-        while c != ']':
-          if c == '':
-            raise 'unterminated bracket expression'
-          if c == '-' and last_char:
+        try:
+          c = chars.pop(0)
+          if c == '!': # inverted
+            inverted = True
+            c = chars.pop(0)
+          else:
+            inverted = False
+          charset = CharacterSet.including('')
+          last_char = None
+          while c != ']':
+            if c == '-' and last_char:
+              c = chars.pop(0)
+              charset = charset.union(CharacterSet.range(last_char, c))
+              last_char = None
+              c = chars.pop(0)
+              continue
+            charset = charset.union(CharacterSet.including(c))
+            last_char = c # save last character
             c = sio.read(1)
-            charset = charset.union(CharacterSet.range(last_char, c))
-            last_char = None
-            c = sio.read(1)
-            continue
-          charset = charset.union(CharacterSet.including(c))
-          last_char = c # save last character
-          c = sio.read(1)
+        except IndexError, e:
+          raise 'unterminated bracket expression'
         if inverted:
           state.add(CharacterSet.excluding('') - charset, new_state)
         else:
