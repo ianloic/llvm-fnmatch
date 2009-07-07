@@ -17,6 +17,7 @@ class Dot:
         self.arcs.append((state.id, child.id, charset))
 
   def __str__(self):
+    '''get the dot representation of this diagram'''
     s = 'digraph %s {\n\trankdir=LR\n' % self.name
     
     if self.label != None:
@@ -38,6 +39,7 @@ class Dot:
 
 
   def show(self):
+    '''display this diagram on the screen, only works on Linux right now'''
     from os import popen, system
     from tempfile import mktemp
     filename = '%s.png' % mktemp()
