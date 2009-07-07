@@ -7,10 +7,10 @@ from llvm.passes import *
 
 
 class Compiled:
+  '''compiler for DFAs representing text patterns into native code'''
   ee = None
   def __init__(self, dfa, debug=False):
-    '''compile a deterministic finite state automaton into native code via
-    llvm'''
+    '''compile a DFA into native code via llvm'''
 
     # create the module
     if debug:
@@ -114,9 +114,11 @@ class Compiled:
     entry_bb.branch(dfa.initial.block)
 
   def __str__(self):
+    '''the LLVM assembly language representation of the function'''
     return str(self.module)
 
   def __call__(self, path):
+    '''execute the compiled code'''
     path_value = GenericValue.string(Type.pointer(Type.int(8)), path)
     retval = Compiled.ee.run_function(self.function, [path_value])
     return (retval.as_int() != 0)
