@@ -54,18 +54,26 @@ class StateMachine:
   def __init__(self, initial, states=[]):
     self.initial = initial
     self.states = states
+    # if the initial state isn't in the states that are passed in, add it
     if self.initial not in self.states:
       self.states.append(self.initial)
 
   def __call__(self, s):
-    states = set([self.initial])
+    '''evaluate a string against this state machine, return True or False'''
+    # start with the initial state
+    states = frozenset([self.initial])
+    # for each character in the string
     for c in s:
       if len(states) == 0:
+        # if we run out of states then there's no match
         return False
+      # find the next states
       new_states = set()
       for state in states:
-        new_states = new_states.union(state(c))
-      states = new_states
+        new_states.update(state(c))
+      states = frozenset(new_states)
+    # all of the characters are consumed
+    # if we're in a terminal (matching) state, then we've succeeded
     return len([s for s in states if s.match]) > 0
 
   def __iter__(self):
