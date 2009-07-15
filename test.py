@@ -1,48 +1,30 @@
 #!/usr/bin/env python
 
-# character classes are functions f(c) -> True/False
-# states are functions f(c) -> set of states
-
-
+# our code
 from dfa import DFA
 from nfa import NFA
+from compiler import Compiled
 
-from dot import Dot
+# the python implementation
+import fnmatch
 
-if __name__ == '__main__':
-  from characterset import test_CharacterSet
-  test_CharacterSet()
+# run unit self tests
+from characterset import test_CharacterSet
+test_CharacterSet()
+from dfa import test_distinctArcs
+test_distinctArcs()
 
-  #from dfa import test_distinctArcs
-  #test_distinctArcs()
+PATTERNS = ('*.txt', '*', '*.*', 'README.*')
+PATHS = ('test.c', 'README.txt', 'README')
 
-#  print "CharacterSet.excluding('') - CharacterSet.including('.') = " + `CharacterSet.excluding('') - CharacterSet.including('.')`
-#  print NFA.fnmatch('*.txt').dot()
-#  print `NFA.fnmatch('*.txt')('hello.txt')`
-#  print `NFA.fnmatch('*.txt')('hello.txto')`
-#  print `NFA.fnmatch('*.txt')('hello.txt.txt')`
-
-  #nfa = NFA.fnmatch('*.txt')
-  nfa = NFA.fnmatch('*.cpp')
-  #nfa = NFA.fnmatch('[a-zA-Z1-90]*.cpp')
-  #nfa = NFA.fnmatch('a*bc')
+for pattern in PATTERNS:
+  nfa = NFA.fnmatch(pattern)
   dfa = DFA(nfa)
-
-  dot = Dot('hobo')
-  dot.add(nfa)
-  dot.add(dfa)
-  #dot.show()
-
-  from compiler import Compiled
   compiled = Compiled(dfa, debug=False)
   compiled.optimize()
+  for path in PATHS:
+    expected = fnmatch.fnmatch(path, pattern)
+    assert nfa(path) == expected
+    assert dfa(path) == expected
+    assert compiled(path) == expected
 
-  result = compiled('test.cpp')
-  print 'result=%s' % `result`
-
-  result = compiled('test.c')
-  print 'result=%s' % `result`
-
-  compiled2 = Compiled(DFA(nfa.fnmatch('hello*')), debug=False)
-  compiled2('hello world')
-  compiled2('sucker hello')
