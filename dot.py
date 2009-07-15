@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 class Dot:
   def __init__(self, name, label=None):

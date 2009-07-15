@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 from llvm import *
 from llvm.core import *
